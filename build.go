@@ -497,6 +497,10 @@ func buildZip(target target) {
 		name += "-noupgrade"
 	}
 
+	for _, file := range listFiles("bin") {
+		target.archiveFiles = append(target.archiveFiles, archiveFile{src: file, dst: file, perm: 0755})
+	}
+  
 	build(target, tags)
 
 	for i := range target.archiveFiles {

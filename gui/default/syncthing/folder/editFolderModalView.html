@@ -275,6 +275,20 @@
                 Enter a non-negative number (e.g., "2.35") and select a unit. Percentages are as part of the total disk size.
               </p>
             </div>
+            <div class="col-md-6 form-group" ng-class="{'has-error': folderEditor.folderPath.$invalid && folderEditor.folderPath.$dirty && !editingFolderDefaults()}">
+              <label for="filesystemEncoderType" translate>Encoder Type</label>
+              &nbsp;<a href="{{docsURL('users/encodertypes')}}" target="_blank"><span class="fas fa-question-circle"></span>&nbsp;<span translate>Help</span></a>
+              <select class="form-control" ng-model="currentFolder.filesystemEncoderType" ng-disabled="editingFolderExisting()">
+                <option value="none" ng-disabled="editingFolderExisting()" translate>None</option>
+                <option value="fat" ng-disabled="editingFolderExisting()" translate>FAT</option>
+              </select>
+              <p ng-if="currentFolder.filesystemEncoderType == 'none'" translate class="help-block">Filenames are not encoded (best for unix-related filesystems such as APFS, Btrfs, ext3/4, HFS+, XFS, ZFS, etc.).</p>
+              <p ng-if="currentFolder.filesystemEncoderType == 'fat'" translate class="help-block">Filenames containing reserved characters (<tt>:*?&lt;&gt;|&quot;</tt>) are encoded (best for exFAT, FAT32, NTFS, ReFS, vfat, etc.).</p>
+              <p ng-if="editingFolderExisting()" translate class="help-block">Encoder type cannot be changed after adding the folder. You need to remove the folder, delete or decrypt the data on disk, and add the folder again.</p>
+            </div>
+          </div>
+
+          <div class="row">
             <div class="col-md-6 form-group">
               <label>
                 <input type="checkbox" ng-disabled="currentFolder._recvEnc" ng-model="currentFolder.ignorePerms" /> <span translate>Ignore Permissions</span>

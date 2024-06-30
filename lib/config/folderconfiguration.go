@@ -52,7 +52,7 @@ func (f FolderConfiguration) Copy() FolderConfiguration {
 func (f FolderConfiguration) Filesystem(fset *db.FileSet) fs.Filesystem {
 	// This is intentionally not a pointer method, because things like
 	// cfg.Folders["default"].Filesystem(nil) should be valid.
-	opts := make([]fs.Option, 0, 3)
+	opts := make([]fs.Option, 0, 4)
 	if f.FilesystemType == fs.FilesystemTypeBasic && f.JunctionsAsDirs {
 		opts = append(opts, new(fs.OptionJunctionsAsDirs))
 	}
@@ -61,6 +61,10 @@ func (f FolderConfiguration) Filesystem(fset *db.FileSet) fs.Filesystem {
 	}
 	if fset != nil {
 		opts = append(opts, fset.MtimeOption())
+	}
+	// We never instantiate "None" encoders, except in the test suite.
+	if f.FilesystemEncoderType != fs.FilesystemEncoderTypeNone {
+		opts = append(opts, fs.FilesystemEncoderOption(f.FilesystemEncoderType))
 	}
 	return fs.NewFilesystem(f.FilesystemType, f.Path, opts...)
 }
@@ -258,6 +262,10 @@ func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices ma
 		f.DisableTempIndexes = true
 		f.IgnorePerms = true
 	}
+
+	// Default to FAT on Windows and Android per @calmh's comment at
+	// https://github.com/syncthing/syncthing/issues/9539#issuecomment-2141394377
+	f.FilesystemEncoderType = fs.DefaultEncoderType()
 }
 
 // RequiresRestartOnly returns a copy with only the attributes that require

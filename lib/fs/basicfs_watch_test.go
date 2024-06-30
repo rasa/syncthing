@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -46,16 +47,35 @@ func TestMain(m *testing.M) {
 		testDirAbs = longFilenameSupport(testDirAbs)
 	}
 
-	testFs = NewFilesystem(FilesystemTypeBasic, testDirAbs)
+	testFSs := []Filesystem{
+		NewFilesystem(FilesystemTypeBasic, testDirAbs),
+	}
 
-	backendBuffer = 10
+	// testing.Short() panics in a TestMain
+	if !slices.Contains(os.Args, "-test.short=true") {
+		ffs := NewFilesystem(FilesystemTypeBasic, testDirAbs, []Option{new(OptionFatEncoder)}...)
+		testFSs = append(testFSs, ffs)
+		// This passes all tests, but is a total waste of time:
+		// nfs := newNoneEncoderFS(testDirAbs)
+		// testFSs = append(testFSs, nfs)
+	}
 
-	exitCode := m.Run()
+	for _, testFs = range testFSs {
+		fmt.Fprintf(os.Stderr, "*** Running tests using the %v ***\n", getFilesystemComment(testFs))
 
-	backendBuffer = 500
-	os.RemoveAll(testDir)
+		backendBuffer = 10
 
-	os.Exit(exitCode)
+		exitCode := m.Run()
+
+		backendBuffer = 500
+		os.RemoveAll(testDir)
+
+		if exitCode != 0 {
+			os.Exit(exitCode)
+		}
+	}
+
+	os.Exit(0)
 }
 
 const (
@@ -362,7 +382,7 @@ func TestWatchSymlinkedRoot(t *testing.T) {
 		panic(err)
 	}
 
-	linkedFs := NewFilesystem(FilesystemTypeBasic, filepath.Join(testFs.URI(), link))
+	linkedFs := NewFilesystem(FilesystemTypeBasic, filepath.Join(testFs.URI(), link), testOpts()...)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -410,7 +430,7 @@ func TestWatchIssue4877(t *testing.T) {
 		t.Fatalf("Failed to get volume name for path %v", testDirAbs)
 	}
 	origTestFs := testFs
-	testFs = NewFilesystem(FilesystemTypeBasic, strings.ToLower(volName)+strings.ToUpper(testDirAbs[len(volName):]))
+	testFs = NewFilesystem(FilesystemTypeBasic, strings.ToLower(volName)+strings.ToUpper(testDirAbs[len(volName):]), testOpts()...)
 	defer func() {
 		testFs = origTestFs
 	}()
@@ -637,4 +657,34 @@ func (fakeEventInfo) Event() notify.Event {
 
 func (fakeEventInfo) Sys() interface{} {
 	return nil
+}
+
+func getFilesystemComment(fs Filesystem) string {
+	name := getEncoderName(fs)
+	if name != "" {
+		return name + " encoder filesystem (`go test -short` to skip)"
+	}
+	return fmt.Sprintf("%v (%v) filesystem", fs.Type(), fs.wrapperType())
+}
+
+func getEncoderName(fs Filesystem) string {
+	ufs, ok := unwrapFilesystem(fs, filesystemWrapperTypeEncoder)
+	if ok {
+		if nfs, ok := ufs.(*noneEncoderFS); ok {
+			return nfs.EncoderType().String()
+		}
+		if ffs, ok := ufs.(*fatEncoderFS); ok {
+			return ffs.EncoderType().String()
+		}
+	}
+	return ""
+}
+
+func testOpts() []Option {
+	opts := make([]Option, 0)
+	_, ok := unwrapFilesystem(testFs, filesystemWrapperTypeEncoder)
+	if ok {
+		opts = append(opts, new(OptionFatEncoder))
+	}
+	return opts
 }

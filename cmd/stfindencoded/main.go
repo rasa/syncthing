@@ -58,6 +58,8 @@ type stats struct {
 	encodes    int // encodes without a decode
 	decodes    int // decodes without an encode
 	duplicates int // file pairs found
+	fixed      int
+	skipped    int
 }
 
 var fixModeMap = map[string]string{
@@ -260,7 +262,7 @@ func findDuplicates(root string, fixMode FixMode) {
 
 	vfs := fs.NewWalkFilesystem(fs.NewFilesystem(fs.FilesystemTypeBasic, root))
 
-	_ = vfs.Walk(".", func(name string, info fs.FileInfo, err error) error {
+	err := vfs.Walk(".", func(name string, info fs.FileInfo, err error) error {
 		path := filepath.Join(root, name)
 		if err != nil {
 			log.Printf("Warning: %s: %v\n", path, err.Error())
@@ -448,6 +450,7 @@ func findDuplicates(root string, fixMode FixMode) {
 				if err != nil {
 					log.Fatalf("Failed to remove %s: %s\n", ePath, err)
 				}
+				stats.fixed++
 			case actionKeepEncoded:
 				stdout("Keeping E: %s%s", ePath, why)
 				if dfi.IsDir() {
@@ -460,21 +463,28 @@ func findDuplicates(root string, fixMode FixMode) {
 				if err != nil {
 					log.Fatalf("Failed to rename %q to %q: %s\n", ePath, dPath, err)
 				}
+				stats.fixed++
 			case actionSkip:
-				// noop
+				stats.skipped++
 			}
 		}
 
 		return nil
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	total := stats.duplicates + stats.decodes + stats.encodes + stats.regular
 
-	stdout("\nTotals:")
+	stdout("\nTotal found:")
 	stdout("Duplicates: %8d (matching encoded/decodes name pairs)", stats.duplicates)
-	stdout("Encoded:    %8d (long encoded file/directory names)", stats.encodes)
+	stdout("Encoded:    %8d (lone encoded file/directory names)", stats.encodes)
 	stdout("Decoded:    %8d (lone decoded file/directory names)", stats.decodes)
 	stdout("Regular:    %8d (non-encoded/decoded names)", stats.regular)
 	stdout("Total:      %8d (files and directories)", total)
+        stdout("Actions taken:")
+	stdout("Fixed:      %8d", stats.fixed)
+	stdout("Skipped:    %8d", stats.skipped)
 }
 
 type encFileInfo struct {

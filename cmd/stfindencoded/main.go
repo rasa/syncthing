@@ -482,7 +482,7 @@ func findDuplicates(root string, fixMode FixMode) {
 	stdout("Decoded:    %8d (lone decoded file/directory names)", stats.decodes)
 	stdout("Regular:    %8d (non-encoded/decoded names)", stats.regular)
 	stdout("Total:      %8d (files and directories)", total)
-        stdout("Actions taken:")
+	stdout("Actions taken:")
 	stdout("Fixed:      %8d", stats.fixed)
 	stdout("Skipped:    %8d", stats.skipped)
 }

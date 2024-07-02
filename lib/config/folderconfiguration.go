@@ -265,7 +265,11 @@ func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices ma
 
 	// Default to FAT on Windows and Android per @calmh's comment at
 	// https://github.com/syncthing/syncthing/issues/9539#issuecomment-2141394377
-	f.FilesystemEncoderType = fs.DefaultEncoderType()
+	// Our test suite may set this to something else, so don't reset it, if it's
+	// not the default (FilesystemEncoderTypeNone).
+	if f.FilesystemEncoderType == fs.FilesystemEncoderTypeNone {
+		f.FilesystemEncoderType = fs.DefaultEncoderType()
+	}
 }
 
 // RequiresRestartOnly returns a copy with only the attributes that require

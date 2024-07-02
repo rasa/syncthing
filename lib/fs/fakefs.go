@@ -1083,14 +1083,18 @@ func (fs *fakeFS) rooted(rel string) (string, error) {
 		return "", os.ErrNotExist
 	}
 	if fs.encoderType == FilesystemEncoderTypeFat {
-		fat.Encode(rel, fs.pattern)
+		if fs.pattern {
+			return fat.EncodePattern(rel)
+		} else {
+			return fat.Encode(rel)
+		}
 	}
 	return rel, nil
 }
 
 func (fs *fakeFS) unrooted(path string) string {
 	if fs.encoderType == FilesystemEncoderTypeFat {
-		return fat.Decode(path)
+		return fat.MustDecode(path)
 	}
 	return path
 }

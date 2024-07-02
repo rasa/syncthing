@@ -192,7 +192,7 @@ func findEncoded(root string) {
 			return nil
 		}
 		found++
-		decoded := fat.Decode(name)
+		decoded := fat.MustDecode(name)
 		fi, err := stat(path)
 		if err != nil {
 			return err
@@ -291,14 +291,14 @@ func findDuplicates(root string, fixMode FixMode) {
 			if !fat.IsDecoded(file) {
 				continue
 			}
-			key := fat.Decode(file)
+			key := fat.MustDecode(file)
 			decodes[key] = true
 		}
 
 		slices.Sort(files)
 
 		for _, eFile := range files {
-			dFile := fat.Decode(eFile)
+			dFile := fat.MustDecode(eFile)
 			if !fat.IsEncoded(eFile) {
 				if fat.IsDecoded(eFile) {
 					if !decodes[dFile] {

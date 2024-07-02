@@ -265,30 +265,29 @@ func TestFATPatternEncoder(t *testing.T) {
 	}
 
 	for i, test := range encodeTests {
+		j := i + 1
 		for _, length := range getLengths() {
 			ins := strings.Repeat(test.in, length)
-			out := strings.Repeat(test.out, length)
+			want := strings.Repeat(test.out, length)
 			got, err := enc.String(ins)
 			if err != nil {
-				t.Errorf("Test %d: PUAPattern.Encode(%+q) unexpected error; %v", i+1, ins, err)
+				t.Errorf("Test %d: PUAPattern.Encode(%+q) unexpected error; %v", j, ins, err)
 			}
-			if got != out {
-				t.Errorf("Test %d: PUAPattern.Encode(%+q) got %+q; want %+q (%d vs %d bytes)", i+1, ins, got, out, len(got), len(out))
+			if got != want {
+				t.Errorf("Test %d: PUAPattern.Encode(%+q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, want, len(want), len(want))
 			}
 
-			got2, err := fat.Encode(ins, true)
-			want2 := got
+			got, err = fat.EncodePattern(ins)
 			if err != nil {
-				t.Errorf("Test %d: Encode(%+q, true) unexpected error; %v", i+1, ins, err)
+				t.Errorf("Test %d: EncodePattern(%+q, true) unexpected error; %v", j, ins, err)
 			}
-			if got2 != want2 {
-				t.Errorf("Test %d: Encode(%+q, true) got %v; want %v (%d vs %d bytes)", i+1, ins, got2, want2, len(got2), len(want2))
+			if got != want {
+				t.Errorf("Test %d: EncodePattern(%+q, true) got %v; want %v (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
 			}
 
-			got3 := fat.IsEncoded(out)
-			want3 := test.encoded
-			if got3 != want3 {
-				t.Errorf("Test %d: IsEncoded(%+q) got %v; want %v", i+1, out, got3, want3)
+			got = fat.MustEncodePattern(ins)
+			if got != want {
+				t.Errorf("Test %d: MustEncodePattern(%+q, true) got %v; want %v (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
 			}
 		}
 	}
@@ -304,15 +303,16 @@ func TestFATPatternEncoderSpecific(t *testing.T) {
 	}
 
 	for i, test := range patternEncodeTests {
+		j := i + 1
 		for _, length := range getLengths() {
 			ins := strings.Repeat(test.in, length)
 			out := strings.Repeat(test.out, length)
 			got, err := enc.String(ins)
 			if err != nil {
-				t.Errorf("Test %d: FATPattern.Encode(%+q) unexpected error; %v", i+1, ins, err)
+				t.Errorf("Test %d: FATPattern.Encode(%+q) unexpected error; %v", j, ins, err)
 			}
 			if got != out {
-				t.Errorf("Test %d: FATPattern.Encode(%+q) got %+q; want %+q (%d vs %d bytes)", i+1, ins, got, out, len(got), len(out))
+				t.Errorf("Test %d: FATPattern.Encode(%+q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, out, len(got), len(out))
 			}
 		}
 	}
@@ -333,27 +333,35 @@ func testFATDecoder(t *testing.T, tests []decodeTest) {
 	dec := fat.PUA.NewDecoder()
 
 	for i, test := range tests {
+		j := i + 1
 		for _, length := range getLengths() {
 			ins := strings.Repeat(test.in, length)
-			out := strings.Repeat(test.out, length)
+			want := strings.Repeat(test.out, length)
 			got, err := dec.String(ins)
 			if err != nil {
-				t.Errorf("Test %d: PUA.Decode(%q) got %v, want %v", i+1, ins, err, nil)
+				t.Errorf("Test %d: PUA.Decode(%q) got %v, want %v", j, ins, err, nil)
 			}
-			if got != out {
-				t.Errorf("Test %d: PUA.Decode(%q) got %+q; want %+q (%d vs %d bytes)", i, ins, got, out, len(got), len(out))
+			if got != want {
+				t.Errorf("Test %d: PUA.Decode(%q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
 			}
 
-			got2 := fat.Decode(ins)
-			want2 := out
+			got, err = fat.Decode(ins)
+			if err != nil {
+				t.Errorf("Test %d: Decode(%+q) unexpected error; %v", j, ins, err)
+			}
+			if got != want {
+				t.Errorf("Test %d: Decode(%+q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
+			}
+
+			got = fat.MustDecode(ins)
+			if got != want {
+				t.Errorf("Test %d: MustDecode(%+q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
+			}
+
+			got2 := fat.IsDecoded(want)
+			want2 := test.decoded
 			if got2 != want2 {
-				t.Errorf("Test %d: Decode(%q) got %v; want %v (%d vs %d bytes)", i, ins, got2, want2, len(got2), len(want2))
-			}
-
-			got3 := fat.IsDecoded(out)
-			want3 := test.decoded
-			if got3 != want3 {
-				t.Errorf("Test %d: IsDecoded(%q) got %v; want %v", i, out, got3, want3)
+				t.Errorf("Test %d: IsDecoded(%q) got %v; want %v", j, ins, got2, want2)
 			}
 		}
 	}
@@ -369,33 +377,35 @@ func testFATEncoder(t *testing.T, tests []encodeTest) {
 	}
 
 	for i, test := range tests {
+		j := i + 1
 		for _, length := range getLengths() {
 			ins := strings.Repeat(test.in, length)
-			out := strings.Repeat(test.out, length)
+			want := strings.Repeat(test.out, length)
 			got, err := enc.String(ins)
 			if err != nil {
-				t.Errorf("Test %d: PUA.Encode(%+q) got %v, want %v", i+1, ins, err, nil)
+				t.Errorf("Test %d: PUA.Encode(%+q) got %v, want %v", j, ins, err, nil)
 			}
-			if got != out {
-				t.Errorf("Test %d: PUA.Encode(%+q) got %+q; want %+q (%d vs %d bytes)", i+1, ins, got, out, len(got), len(out))
+			if got != want {
+				t.Errorf("Test %d: PUA.Encode(%q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
 			}
 
-			got2, err := fat.Encode(ins, false)
-			want2 := out
+			got, err = fat.Encode(ins)
 			if err != nil {
-				t.Errorf("Test %d: Encode(%+q, false) unexpected error; %v", i+1, ins, err)
+				t.Errorf("Test %d: Encode(%+q) unexpected error; %v", j, ins, err)
 			}
-			if got2 != out {
-				t.Errorf("Test %d: Encode(%+q, false) got %+q; want %+q (%d vs %d bytes)", i+1, ins, got2, out, len(got2), len(out))
-			}
-			if got2 != want2 {
-				t.Errorf("Test %d: Encode(%+q, false) got %v; want %v", i+1, ins, got2, want2)
+			if got != want {
+				t.Errorf("Test %d: Encode(%+q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
 			}
 
-			got3 := fat.IsEncoded(out)
-			want3 := test.encoded
-			if got3 != want3 {
-				t.Errorf("Test %d: IsEncoded(%+q) got %v; want %v: length=%v", i+1, out, got3, want3, length)
+			got = fat.MustEncode(ins)
+			if got != want {
+				t.Errorf("Test %d: MustEncode(%+q) got %+q; want %+q (%d vs %d bytes)", j, ins, got, want, len(got), len(want))
+			}
+
+			got2 := fat.IsEncoded(want)
+			want2 := test.encoded
+			if got2 != want2 {
+				t.Errorf("Test %d: IsEncoded(%q) got %v; want %v", j, want, got2, want2)
 			}
 		}
 	}
@@ -433,6 +443,8 @@ func hasReplacementChar(name string) bool {
 }
 
 func BenchmarkFatDecoder(b *testing.B) {
+	b.ReportAllocs()
+
 	dec := fat.PUA.NewDecoder()
 	for i := 0; i < b.N; i++ {
 		for _, d := range decodeTests {
@@ -447,6 +459,8 @@ func BenchmarkFatDecoder(b *testing.B) {
 }
 
 func BenchmarkFatEncoder(b *testing.B) {
+	b.ReportAllocs()
+
 	enc := fat.PUA.NewEncoder()
 	for i := 0; i < b.N; i++ {
 		for _, d := range decodeTests {
@@ -459,6 +473,8 @@ func BenchmarkFatEncoder(b *testing.B) {
 }
 
 func BenchmarkFatPatternEncoder(b *testing.B) {
+	b.ReportAllocs()
+
 	enc := fat.PUAPattern.NewEncoder()
 	for i := 0; i < b.N; i++ {
 		for _, d := range decodeTests {

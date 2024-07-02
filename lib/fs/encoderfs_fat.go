@@ -40,7 +40,7 @@ func (*OptionFatEncoder) String() string {
 
 // decode returns the original pre-encoded filename.
 func (f *fatEncoderFS) decode(name string) string {
-	decoded := fat.Decode(name)
+	decoded := fat.MustDecode(name)
 	if decoded != name && l.ShouldDebug("encoder") {
 		l.Debugf("FAT encoder decoded %q as %q", name, decoded)
 	}
@@ -57,7 +57,13 @@ func (f *fatEncoderFS) encode(name string, pattern bool) (string, error) {
 		}
 		return "", &os.PathError{Op: "all", Path: name, Err: os.ErrNotExist}
 	}
-	encoded, err := fat.Encode(name, f.pattern)
+	var encoded string
+	var err error
+	if f.pattern {
+		encoded, err = fat.EncodePattern(name)
+	} else {
+		encoded, err = fat.Encode(name)
+	}
 	// The encoder has never failed in testing, but since we can return an error,
 	// we might as well.
 	if err != nil {

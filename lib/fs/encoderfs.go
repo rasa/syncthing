@@ -296,7 +296,7 @@ func (f *encoderFS) SetXattr(name string, xattrs []protocol.Xattr, xattrFilter X
 }
 
 func (f *encoderFS) underlying() (Filesystem, bool) {
-	return f.Filesystem.underlying()
+	return f.Filesystem
 }
 
 func (*encoderFS) wrapperType() filesystemWrapperType {

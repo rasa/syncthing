@@ -16,12 +16,12 @@ import (
 	"github.com/syncthing/syncthing/lib/build"
 )
 
-func testWalkSkipSymlink(t *testing.T, fsType FilesystemType, uri string) {
+func testWalkSkipSymlink(t *testing.T, fsType FilesystemType, uri string, opts []Option) {
 	if build.IsWindows {
 		t.Skip("Symlinks skipping is not tested on windows")
 	}
 
-	fs := NewFilesystem(fsType, uri)
+	fs := NewFilesystem(fsType, uri, opts...)
 
 	if err := fs.MkdirAll("target/foo", 0755); err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func createDirJunct(target string, name string) error {
 	return nil
 }
 
-func testWalkTraverseDirJunct(t *testing.T, fsType FilesystemType, uri string) {
+func testWalkTraverseDirJunct(t *testing.T, fsType FilesystemType, uri string, opts []Option) {
 	if !build.IsWindows {
 		t.Skip("Directory junctions are available and tested on windows only")
 	}
@@ -86,7 +86,7 @@ func testWalkTraverseDirJunct(t *testing.T, fsType FilesystemType, uri string) {
 	}
 }
 
-func testWalkInfiniteRecursion(t *testing.T, fsType FilesystemType, uri string) {
+func testWalkInfiniteRecursion(t *testing.T, fsType FilesystemType, uri string, opts []Option) {
 	if !build.IsWindows {
 		t.Skip("Infinite recursion detection is tested on windows only")
 	}

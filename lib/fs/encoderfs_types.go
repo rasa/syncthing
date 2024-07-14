@@ -12,6 +12,8 @@ func (t FilesystemEncoderType) String() string {
 		return "none"
 	case FilesystemEncoderTypeFat:
 		return "fat"
+	case FilesystemEncoderTypeUnset:
+		return "unset"
 	default:
 		return "unknown"
 	}
@@ -27,8 +29,14 @@ func (t *FilesystemEncoderType) UnmarshalText(bs []byte) error {
 		*t = FilesystemEncoderTypeNone
 	case "fat":
 		*t = FilesystemEncoderTypeFat
+	case "unset":
+		*t = FilesystemEncoderTypeUnset
 	default:
 		*t = FilesystemEncoderTypeNone
 	}
 	return nil
+}
+
+func (t *FilesystemEncoderType) ParseDefault(str string) error {
+	return t.UnmarshalText([]byte(str))
 }

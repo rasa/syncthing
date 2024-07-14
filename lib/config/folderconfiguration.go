@@ -63,7 +63,10 @@ func (f FolderConfiguration) Filesystem(fset *db.FileSet) fs.Filesystem {
 		opts = append(opts, fset.MtimeOption())
 	}
 	// We never instantiate "None" encoders, except in the test suite.
-	if f.FilesystemEncoderType != fs.FilesystemEncoderTypeNone {
+	switch f.FilesystemEncoderType {
+	case fs.FilesystemEncoderTypeUnset, fs.FilesystemEncoderTypeNone:
+		// noop
+	default:
 		opts = append(opts, fs.FilesystemEncoderOption(f.FilesystemEncoderType))
 	}
 	return fs.NewFilesystem(f.FilesystemType, f.Path, opts...)

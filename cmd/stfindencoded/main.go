@@ -32,7 +32,18 @@ import (
 	"github.com/syncthing/syncthing/lib/osutil/wsl"
 )
 
-// FixMode is the mode selected by the user, via the --mode startup option.
+// FixMode is the mode selected by the user, via the --mode option.
+type Mode int
+
+const (
+	modeEncoded Mode = iota
+	modeDecoded
+	modeBoth
+	modeDuplicates
+	modeFix
+)
+
+// FixMode is the mode selected by the user, via the --default option.
 type FixMode int
 
 const (
@@ -86,12 +97,15 @@ func main() {
 	log.SetFlags(0)
 	var mode string
 	var defFixMode string
+	var long bool
 
 	flag.Usage = usage
 	flag.StringVar(&mode, "mode", "encoded",
-		"Set action: encoded, decoded, duplicates, fix")
+		"Set action: encoded, decoded, both, duplicates, fix")
 	flag.StringVar(&defFixMode, "default", "manual",
 		"Set default fix action: manual, decoded, encoded, older, newer")
+	flag.BoolVar(&long, "long", false,
+		"Use a long listing format")
 
 	flag.Parse()
 	args := flag.Args()
@@ -118,11 +132,15 @@ func main() {
 	switch mode {
 	case "encoded":
 		for _, arg := range args {
-			findEncoded(arg)
+			find(modeEncoded, arg, long)
 		}
 	case "decoded":
 		for _, arg := range args {
-			findDecoded(arg)
+			find(modeDecoded, arg, long)
+		}
+	case "both":
+		for _, arg := range args {
+			find(modeBoth, arg, long)
 		}
 	case "duplicates":
 		for _, arg := range args {
@@ -152,6 +170,7 @@ Mode option:
 
   encoded:    Display filenames that are encoded (default if no mode specified)
   decoded:    Display filenames that would be encoded, if synced
+  both:       Display filenames that are, or would be encoded, if synced
   duplicates: Display file pairs that have both encoded and original (pre-encoded) filenames
   fix:        Display duplicates and optionally delete one of the duplicates
 
@@ -171,46 +190,27 @@ Default option (when -mode=fix is selected):
 	os.Exit(1)
 }
 
-func findEncoded(root string) {
-	if wsl.IsWSL() {
-		log.Println(inWSLMsg + noEncodeMsg + butHeyMsg)
+func find(mode Mode, root string, long bool) {
+	msg := ""
+	switch mode {
+	case modeEncoded:
+		msg = "Scanning %s for encoded filenames"
+		if wsl.IsWSL() {
+			log.Println(inWSLMsg + noEncodeMsg + butHeyMsg)
+		}
+	case modeDecoded:
+		msg = "Scanning %s for filenames that would be encoded"
+		if wsl.IsWSL() {
+			log.Println(inWSLMsg + noDecodedMsg + butHeyMsg)
+		}
+	case modeBoth:
+		msg = "Scanning %s for encoded filenames and those that would be encoded"
+		if wsl.IsWSL() {
+			log.Println(inWSLMsg + noDecodedMsg + butHeyMsg)
+		}
 	}
 
-	stdout("Scanning %s for encoded filenames", root)
-	found := 0
-
-	vfs := fs.NewWalkFilesystem(fs.NewFilesystem(fs.FilesystemTypeBasic, root))
-
-	_ = vfs.Walk(".", func(name string, _ fs.FileInfo, err error) error {
-		path := filepath.Join(root, name)
-		if err != nil {
-			log.Printf("Warning: %s: %v\n", path, err)
-
-			return fs.SkipDir
-		}
-		if !fat.IsEncoded(name) {
-			return nil
-		}
-		found++
-		decoded := fat.MustDecode(name)
-		fi, err := stat(path)
-		if err != nil {
-			return err
-		}
-		stdout("%s (would decode to %s)", fi.String(), decoded)
-
-		return nil
-	})
-
-	stdout("Found %d encoded filenames", found)
-}
-
-func findDecoded(root string) {
-	if wsl.IsWSL() {
-		log.Println(inWSLMsg + noDecodedMsg + butHeyMsg)
-	}
-
-	stdout("Scanning %s for filenames that would be encoded", root)
+	stdout(msg, root)
 	found := 0
 
 	vfs := fs.NewWalkFilesystem(fs.NewFilesystem(fs.FilesystemTypeBasic, root))
@@ -224,28 +224,58 @@ func findDecoded(root string) {
 
 			return fs.SkipDir
 		}
-		if nevers.MatchString(name) {
-			fi, err := stat(path)
-			if err != nil {
-				return err
-			}
-			stdout("%s %s", fi.String(), "(unencodeable)")
+		switch mode {
+		case modeDecoded, modeBoth:
+			if nevers.MatchString(name) {
+				fi, err := stat(path)
+				if err != nil {
+					return err
+				}
+				out := fi.Name()
+				if long {
+					out = fi.String()
+				}
+				stdout("%s %s", out, "(unencodeable)")
 
-			return nil
+				return nil
+			}
 		}
-		if !fat.IsDecoded(path) {
-			return nil
+
+		switch mode {
+		case modeEncoded:
+			if !fat.IsEncoded(name) {
+				return nil
+			}
+		case modeDecoded:
+			if !fat.IsDecoded(path) {
+				return nil
+			}
+		case modeBoth:
+			if !fat.IsEncoded(name) && !fat.IsDecoded(path) {
+				return nil
+			}
 		}
 		found++
+
 		fi, err := stat(path)
 		if err != nil {
 			return err
 		}
-		stdout(fi.String())
+		out := fi.Name()
+		if long {
+			out = fi.String()
+		}
+		switch mode {
+		case modeEncoded:
+			decoded := fat.MustDecode(name)
+			stdout("%s (%s decoded)", out, decoded)
+		case modeDecoded, modeBoth:
+			stdout("%s", out)
+		}
 
 		return nil
 	})
-	stdout("Found %d encodable files", found)
+	stdout("Found %d encoded/encodable files", found)
 }
 
 func findDuplicates(root string, fixMode FixMode) {
@@ -275,7 +305,7 @@ func findDuplicates(root string, fixMode FixMode) {
 
 		decoded := quoted(name)
 		if decoded != name {
-			decoded = " (" + decoded + ")"
+			decoded = " (" + decoded + " decoded)"
 		} else {
 			decoded = ""
 		}
@@ -365,6 +395,7 @@ func findDuplicates(root string, fixMode FixMode) {
 			}
 			stdout("D: %s", dfi.String())
 			stdout("E: %s", efi.String())
+
 			//if len(diffs) > 0 {
 			//          1         2         3         4         5
 			// 123456789012345678901234567890123456789012345678901234567890

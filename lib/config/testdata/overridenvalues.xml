@@ -80,6 +80,7 @@
             <copyRangeMethod>standard</copyRangeMethod>
             <caseSensitiveFS>false</caseSensitiveFS>
             <junctionsAsDirs>false</junctionsAsDirs>
+            <filesystemEncoderType>none</filesystemEncoderType>
         </folder>
         <device id="" compression="metadata" introducer="false" skipIntroductionRemovals="false" introducedBy="">
             <address>dynamic</address>

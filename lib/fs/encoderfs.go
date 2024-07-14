@@ -36,7 +36,7 @@ type encoderFS struct {
 // FilesystemEncoderOption returns the Option for the passed encoder type.
 func FilesystemEncoderOption(et FilesystemEncoderType) Option {
 	switch et {
-	case FilesystemEncoderTypeNone:
+	case FilesystemEncoderTypeUnset, FilesystemEncoderTypeNone:
 		// This is only used by the test suite code, we don't instantiate None
 		// encoders otherwise.
 		return new(OptionNoneEncoder)

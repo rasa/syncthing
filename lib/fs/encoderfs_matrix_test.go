@@ -132,6 +132,9 @@ func TestEncoderMatrix(tttt *testing.T) {
 			// NoneEncoder / FatEncoder
 			for encoderTypeID := range FilesystemEncoderType_name {
 				encoderType := FilesystemEncoderType(encoderTypeID)
+				if encoderType == FilesystemEncoderTypeUnset {
+					continue
+				}
 				ttName := title(encoderType.String()) + "Encoder"
 				ttt.Run(ttName, func(tt *testing.T) {
 					// ExtVolume / FatVolume
@@ -203,6 +206,9 @@ func testEncoderCheckForNewTypes(t *testing.T) {
 		// NoneEncoder / FatEncoder
 		for encoderTypeID := range FilesystemEncoderType_name {
 			encoderType := FilesystemEncoderType(encoderTypeID)
+			if encoderType == FilesystemEncoderTypeUnset {
+				continue
+			}
 			// ExtVolume / FatVolume
 			for _, volumeType := range fsutil.VolumeTypes {
 				switch volumeType {

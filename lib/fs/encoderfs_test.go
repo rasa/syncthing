@@ -33,7 +33,7 @@ func TestEncoderOptions(t *testing.T) {
 		got := opt.String()
 		var want string
 		switch encoderType {
-		case FilesystemEncoderTypeNone:
+		case FilesystemEncoderTypeUnset, FilesystemEncoderTypeNone:
 			want = new(OptionNoneEncoder).String()
 		case FilesystemEncoderTypeFat:
 			want = new(OptionFatEncoder).String()
@@ -55,13 +55,14 @@ func TestEncoderNewFilesystem(t *testing.T) {
 			filesystemType := FilesystemType(filesystemTypeID)
 			fs := NewFilesystem(filesystemType, testDir, opts...)
 			unwrappedFS, ok := unwrapFilesystem(fs, filesystemWrapperTypeEncoder)
-			want := encoderType != FilesystemEncoderTypeNone
+			want := encoderType != FilesystemEncoderTypeUnset &&
+				encoderType != FilesystemEncoderTypeNone
 			if ok != want {
 				t.Errorf("NewFilesystem(%v) got %v, want %v re instantiating an encodingFS",
 					encoderType, ok, want)
 			}
 			switch encoderType {
-			case FilesystemEncoderTypeNone:
+			case FilesystemEncoderTypeUnset, FilesystemEncoderTypeNone:
 				// s'll good man
 			case FilesystemEncoderTypeFat:
 				ffs, ok := unwrappedFS.(*fatEncoderFS)

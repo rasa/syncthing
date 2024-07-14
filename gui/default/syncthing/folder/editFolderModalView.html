@@ -284,7 +284,7 @@
               </select>
               <p ng-if="currentFolder.filesystemEncoderType == 'none'" translate class="help-block">Filenames are not encoded (best for unix-related filesystems such as APFS, Btrfs, ext3/4, HFS+, XFS, ZFS, etc.).</p>
               <p ng-if="currentFolder.filesystemEncoderType == 'fat'" translate class="help-block">Filenames containing reserved characters (<tt>:*?&lt;&gt;|&quot;</tt>) are encoded (best for exFAT, FAT32, NTFS, ReFS, vfat, etc.).</p>
-              <p ng-if="editingFolderExisting()" translate class="help-block">Encoder type cannot be changed after adding the folder. You need to remove the folder, delete or decrypt the data on disk, and add the folder again.</p>
+              <p ng-if="editingFolderExisting()" translate class="help-block">Encoder type cannot be changed after adding the folder. You need to remove the folder, and add it again.</p>
             </div>
           </div>
 

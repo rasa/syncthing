@@ -11,7 +11,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"os"
 	"path"
 	"path/filepath"
 	"sort"
@@ -262,13 +261,6 @@ func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices ma
 	if f.Type == FolderTypeReceiveEncrypted {
 		f.DisableTempIndexes = true
 		f.IgnorePerms = true
-	}
-
-	// Default to FAT on Windows and Android per @calmh's comment at
-	// https://github.com/syncthing/syncthing/issues/9539#issuecomment-2141394377
-	// Don't overwrite the encoder type if called from the test suite.
-	if os.Getenv("STDEBUG_NODEFAULTENCODER") == "" {
-		f.FilesystemEncoderType = fs.DefaultEncoderType()
 	}
 }
 

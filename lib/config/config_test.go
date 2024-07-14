@@ -199,7 +199,7 @@ func TestDeviceConfig(t *testing.T) {
 				XattrFilter: XattrFilter{
 					Entries: []XattrFilterEntry{},
 				},
-				FilesystemEncoderType: fs.DefaultEncoderType(),
+				FilesystemEncoderType: fs.FilesystemEncoderTypeNone,
 			},
 		}
 

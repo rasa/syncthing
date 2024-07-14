@@ -14,7 +14,7 @@ func newFATEncoderFS(root string) *fatEncoderFS {
 	bfs := newBasicFilesystem(root)
 	ffs := &fatEncoderFS{encoderFS{
 		Filesystem:  bfs,
-		encoderType: FilesystemEncoderTypeFat,
+		encoderType: EncoderTypeFat,
 	}}
 	ffs.Encoder = ffs
 	ffs.SetRooter(ffs)
@@ -28,7 +28,7 @@ func TestEncoderFAT(t *testing.T) {
 	unwrappedFS, ok := unwrapFilesystem(fs, filesystemWrapperTypeEncoder)
 	if !ok {
 		t.Errorf("NewFilesystem(%v) got %v, want %v",
-			FilesystemEncoderTypeFat, "!filesystemWrapperTypeEncoder",
+			EncoderTypeFat, "!filesystemWrapperTypeEncoder",
 			"filesystemWrapperTypeEncoder")
 	}
 	ffs, ok := unwrappedFS.(*fatEncoderFS)
@@ -36,8 +36,8 @@ func TestEncoderFAT(t *testing.T) {
 		t.Errorf("NewFilesystem(%v) failed to instantiate a FAT encoder", opts[0].String())
 	}
 	encoderType := ffs.EncoderType()
-	if encoderType != FilesystemEncoderTypeFat {
+	if encoderType != EncoderTypeFat {
 		t.Errorf("NewFilesystem(%v) got %v, want %v",
-			FilesystemEncoderTypeFat, encoderType, FilesystemEncoderTypeFat)
+			EncoderTypeFat, encoderType, EncoderTypeFat)
 	}
 }

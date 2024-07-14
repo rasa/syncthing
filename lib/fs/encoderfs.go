@@ -29,21 +29,21 @@ type encoderFS struct {
 	Filesystem
 	Encoder
 	Rooter
-	encoderType FilesystemEncoderType
+	encoderType EncoderType
 	pattern     bool // true to not encode * and ? in glob patterns
 }
 
-// FilesystemEncoderOption returns the Option for the passed encoder type.
-func FilesystemEncoderOption(et FilesystemEncoderType) Option {
-	switch et {
-	case FilesystemEncoderTypeUnset, FilesystemEncoderTypeNone:
+// EncoderTypeOption returns the Option for the passed encoder type.
+func EncoderTypeOption(encoderType EncoderType) Option {
+	switch encoderType {
+	case EncoderTypeUnset, EncoderTypeNone:
 		// This is only used by the test suite code, we don't instantiate None
 		// encoders otherwise.
 		return new(OptionNoneEncoder)
-	case FilesystemEncoderTypeFat:
+	case EncoderTypeFat:
 		return new(OptionFatEncoder)
 	default:
-		panic("bug: unknown encoder " + et.String())
+		panic("bug: unknown encoder " + encoderType.String())
 	}
 }
 
@@ -303,7 +303,7 @@ func (*encoderFS) wrapperType() filesystemWrapperType {
 	return filesystemWrapperTypeEncoder
 }
 
-func (f *encoderFS) EncoderType() FilesystemEncoderType {
+func (f *encoderFS) EncoderType() EncoderType {
 	return f.encoderType
 }
 
@@ -416,9 +416,9 @@ func (fi *encoderFileInfo) osFileInfo() os.FileInfo {
 // and Android we default to the FAT encoder per @calmh's comment at
 // https://github.com/syncthing/syncthing/issues/9539#issuecomment-2141394377
 // On all other systems, including WSL on Windows, we default to the None encoder.
-func DefaultEncoderType() FilesystemEncoderType {
+func DefaultEncoderType() EncoderType {
 	if build.IsWindows || build.IsAndroid {
-		return FilesystemEncoderTypeFat
+		return EncoderTypeFat
 	}
-	return FilesystemEncoderTypeNone
+	return EncoderTypeNone
 }

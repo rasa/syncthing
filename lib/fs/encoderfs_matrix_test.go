@@ -48,23 +48,23 @@ type encoderTest struct {
 // Fat None    fail      ok
 // Fat FAT     ok        fail
 
-var encoderTestMatrix = map[fsutil.VolumeType]map[FilesystemEncoderType]encoderTest{
+var encoderTestMatrix = map[fsutil.VolumeType]map[EncoderType]encoderTest{
 	fsutil.VolumeTypeExt: {
-		FilesystemEncoderTypeNone: {
+		EncoderTypeNone: {
 			decodeOK: true,
 			encodeOK: true,
 		},
-		FilesystemEncoderTypeFat: {
+		EncoderTypeFat: {
 			decodeOK: true,
 			encodeOK: false,
 		},
 	},
 	fsutil.VolumeTypeFat: {
-		FilesystemEncoderTypeNone: {
+		EncoderTypeNone: {
 			decodeOK: false,
 			encodeOK: true,
 		},
-		FilesystemEncoderTypeFat: {
+		EncoderTypeFat: {
 			decodeOK: true,
 			encodeOK: false,
 		},
@@ -130,9 +130,9 @@ func TestEncoderMatrix(tttt *testing.T) {
 		tttName := title(filesystemType.String()) + "FS"
 		tttt.Run(tttName, func(ttt *testing.T) {
 			// NoneEncoder / FatEncoder
-			for encoderTypeID := range FilesystemEncoderType_name {
-				encoderType := FilesystemEncoderType(encoderTypeID)
-				if encoderType == FilesystemEncoderTypeUnset {
+			for encoderTypeID := range EncoderType_name {
+				encoderType := EncoderType(encoderTypeID)
+				if encoderType == EncoderTypeUnset {
 					continue
 				}
 				ttName := title(encoderType.String()) + "Encoder"
@@ -181,7 +181,7 @@ func TestEncoderMatrix(tttt *testing.T) {
 							// ok checks done in testEncoderCheckForNewTypes()
 							encoderTests := encoderTestMatrix[volumeType]
 							encoderTest := encoderTests[encoderType]
-							opts := []Option{FilesystemEncoderOption(encoderType)}
+							opts := []Option{EncoderTypeOption(encoderType)}
 							fs := NewFilesystem(filesystemType, rootURI, opts...)
 							runEncoderTests(t, fs, encoderTest)
 						})
@@ -204,9 +204,9 @@ func testEncoderCheckForNewTypes(t *testing.T) {
 				filesystemType)
 		}
 		// NoneEncoder / FatEncoder
-		for encoderTypeID := range FilesystemEncoderType_name {
-			encoderType := FilesystemEncoderType(encoderTypeID)
-			if encoderType == FilesystemEncoderTypeUnset {
+		for encoderTypeID := range EncoderType_name {
+			encoderType := EncoderType(encoderTypeID)
+			if encoderType == EncoderTypeUnset {
 				continue
 			}
 			// ExtVolume / FatVolume

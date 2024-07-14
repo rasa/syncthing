@@ -65,7 +65,7 @@ type Config struct {
 	// Filter for extended attributes
 	XattrFilter XattrFilter
 	// The type of filesystem encoder (None, FAT, etc.)
-	FilesystemEncoderType fs.FilesystemEncoderType
+	EncoderType fs.EncoderType
 }
 
 type CurrentFiler interface {

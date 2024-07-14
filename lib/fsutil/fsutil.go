@@ -30,7 +30,7 @@ const (
 	VolumeTypeUnknown VolumeType = iota
 	// VolumeTypeFat is if the volume is FAT or FAT-like, in that the volume
 	// rejects filenames with the characters `"*:<>?|` and \x01-\x1f in them.
-	// Fat is mixed-case to mimic Ext, and to mimic FilesystemEncoderTypeFat
+	// Fat is mixed-case to mimic Ext, and to mimic EncoderTypeFat
 	// which is mixed case too.
 	VolumeTypeFat
 	// VolumeTypeExt is if the volume is not FAT-like, in that it accepts

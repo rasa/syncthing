@@ -27,7 +27,7 @@ type OptionFatEncoder struct{}
 func (*OptionFatEncoder) apply(fs Filesystem) Filesystem {
 	ffs := &fatEncoderFS{encoderFS{
 		Filesystem:  fs,
-		encoderType: FilesystemEncoderTypeFat,
+		encoderType: EncoderTypeFat,
 	}}
 	ffs.Encoder = ffs
 	ffs.SetRooter(ffs)

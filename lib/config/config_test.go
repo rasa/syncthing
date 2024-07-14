@@ -123,7 +123,7 @@ func TestDefaultValues(t *testing.T) {
 					MaxSingleEntrySize: 1024,
 					MaxTotalSize:       4096,
 				},
-				FilesystemEncoderType: fs.DefaultEncoderType(),
+				EncoderType: fs.DefaultEncoderType(),
 			},
 			Device: DeviceConfiguration{
 				Addresses:       []string{"dynamic"},

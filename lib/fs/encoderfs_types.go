@@ -6,37 +6,37 @@
 
 package fs
 
-func (t FilesystemEncoderType) String() string {
+func (t EncoderType) String() string {
 	switch t {
-	case FilesystemEncoderTypeNone:
+	case EncoderTypeNone:
 		return "none"
-	case FilesystemEncoderTypeFat:
+	case EncoderTypeFat:
 		return "fat"
-	case FilesystemEncoderTypeUnset:
+	case EncoderTypeUnset:
 		return "unset"
 	default:
 		return "unknown"
 	}
 }
 
-func (t FilesystemEncoderType) MarshalText() ([]byte, error) {
+func (t EncoderType) MarshalText() ([]byte, error) {
 	return []byte(t.String()), nil
 }
 
-func (t *FilesystemEncoderType) UnmarshalText(bs []byte) error {
+func (t *EncoderType) UnmarshalText(bs []byte) error {
 	switch string(bs) {
 	case "none":
-		*t = FilesystemEncoderTypeNone
+		*t = EncoderTypeNone
 	case "fat":
-		*t = FilesystemEncoderTypeFat
+		*t = EncoderTypeFat
 	case "unset":
-		*t = FilesystemEncoderTypeUnset
+		*t = EncoderTypeUnset
 	default:
-		*t = FilesystemEncoderTypeNone
+		*t = EncoderTypeNone
 	}
 	return nil
 }
 
-func (t *FilesystemEncoderType) ParseDefault(str string) error {
+func (t *EncoderType) ParseDefault(str string) error {
 	return t.UnmarshalText([]byte(str))
 }

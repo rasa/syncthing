@@ -344,7 +344,7 @@ func (f *sendReceiveFolder) processNeeded(snap *db.Snapshot, dbUpdateChan chan<-
 
 		var err error
 		if build.IsWindows {
-			err = fs.WindowsInvalidPath(file.Name, f.FilesystemEncoderType)
+			err = fs.WindowsInvalidPath(file.Name, f.EncoderType)
 		}
 
 		switch {

@@ -18,7 +18,7 @@ func (*OptionNoneEncoder) apply(fs Filesystem) Filesystem {
 	// Only used in test suite, as we don't instantiate None encoders otherwise.
 	ffs := &noneEncoderFS{encoderFS{
 		Filesystem:  fs,
-		encoderType: FilesystemEncoderTypeNone,
+		encoderType: EncoderTypeNone,
 	}}
 	ffs.Encoder = ffs
 	ffs.SetRooter(ffs)

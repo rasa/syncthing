@@ -636,8 +636,8 @@ func (defaults *Defaults) prepare(myID protocol.DeviceID, existingDevices map[pr
 	// Default to FAT on Windows and Android per @calmh's comment at
 	// https://github.com/syncthing/syncthing/issues/9539#issuecomment-2141394377
 	// Only set the default encoder type if it hasn't already been set.
-	if defaults.Folder.FilesystemEncoderType == fs.FilesystemEncoderTypeUnset {
-		defaults.Folder.FilesystemEncoderType = fs.DefaultEncoderType()
+	if defaults.Folder.EncoderType == fs.EncoderTypeUnset {
+		defaults.Folder.EncoderType = fs.DefaultEncoderType()
 	}
 }
 

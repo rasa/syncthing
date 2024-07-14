@@ -276,15 +276,15 @@
               </p>
             </div>
             <div class="col-md-6 form-group" ng-class="{'has-error': folderEditor.folderPath.$invalid && folderEditor.folderPath.$dirty && !editingFolderDefaults()}">
-              <label for="filesystemEncoderType" translate>Encoder Type</label>
-              &nbsp;<a href="{{docsURL('users/encodertypes')}}" target="_blank"><span class="fas fa-question-circle"></span>&nbsp;<span translate>Help</span></a>
-              <select class="form-control" ng-model="currentFolder.filesystemEncoderType" ng-disabled="editingFolderExisting()">
+              <label for="encoderType" translate>Filename Encoder</label>
+              &nbsp;<a href="{{docsURL('users/filenameencoders')}}" target="_blank"><span class="fas fa-question-circle"></span>&nbsp;<span translate>Help</span></a>
+              <select class="form-control" ng-model="currentFolder.encoderType" ng-disabled="editingFolderExisting()">
                 <option value="none" ng-disabled="editingFolderExisting()" translate>None</option>
                 <option value="fat" ng-disabled="editingFolderExisting()" translate>FAT</option>
               </select>
-              <p ng-if="currentFolder.filesystemEncoderType == 'none'" translate class="help-block">Filenames are not encoded (best for unix-related filesystems such as APFS, Btrfs, ext3/4, HFS+, XFS, ZFS, etc.).</p>
-              <p ng-if="currentFolder.filesystemEncoderType == 'fat'" translate class="help-block">Filenames containing reserved characters (<tt>:*?&lt;&gt;|&quot;</tt>) are encoded (best for exFAT, FAT32, NTFS, ReFS, vfat, etc.).</p>
-              <p ng-if="editingFolderExisting()" translate class="help-block">Encoder type cannot be changed after adding the folder. You need to remove the folder, and add it again.</p>
+              <p ng-if="currentFolder.encoderType == 'none'" translate class="help-block">Filenames are not encoded (best for Linux, macOS, and other unix-like systems, using APFS, Btrfs, ext3/4, HFS+, XFS, ZFS, etc. filesystems).</p>
+              <p ng-if="currentFolder.encoderType == 'fat'" translate class="help-block">Filenames containing reserved characters (<tt>:*?&lt;&gt;|&quot;</tt>) are encoded (best for Windows, Android and similar systems, using exFAT, FAT32, NTFS, ReFS, vfat, etc. filesystems).</p>
+              <p ng-if="editingFolderExisting()" translate class="help-block">Filename encoder cannot be changed after adding the folder. You need to remove the folder, and add it again.</p>
             </div>
           </div>
 

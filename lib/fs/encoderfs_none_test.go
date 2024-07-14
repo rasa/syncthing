@@ -14,7 +14,7 @@ func newNoneEncoderFS(root string) *noneEncoderFS {
 	bfs := newBasicFilesystem(root)
 	nfs := &noneEncoderFS{encoderFS{
 		Filesystem:  bfs,
-		encoderType: FilesystemEncoderTypeFat,
+		encoderType: EncoderTypeFat,
 	}}
 	nfs.Encoder = nfs
 	nfs.SetRooter(nfs)

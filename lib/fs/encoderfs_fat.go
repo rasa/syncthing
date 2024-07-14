@@ -8,7 +8,6 @@ package fs
 
 import (
 	"os"
-	"testing"
 
 	"github.com/syncthing/syncthing/lib/encoding/fat"
 )
@@ -52,10 +51,8 @@ func (f *fatEncoderFS) encode(name string, pattern bool) (string, error) {
 	if fat.IsEncoded(name) {
 		// The FAT encoder rejects encoded filenames, regardless of the
 		// underlying filesystem.
-		if !testing.Testing() {
-			l.Warnf("FAT encoder ignoring encoded filename %q", name)
-		}
-		return "", &os.PathError{Op: "all", Path: name, Err: os.ErrNotExist}
+		l.Warnf("FAT encoder ignoring encoded filename %q", name)
+		return "", &os.PathError{Op: "encode", Path: name, Err: os.ErrNotExist}
 	}
 	var encoded string
 	var err error

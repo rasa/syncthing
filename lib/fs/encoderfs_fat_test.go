@@ -8,14 +8,21 @@ package fs
 
 import (
 	"testing"
+
+	"github.com/syncthing/syncthing/lib/encoding/fat"
 )
 
 func newFATEncoderFS(root string) *fatEncoderFS {
 	bfs := newBasicFilesystem(root)
-	ffs := &fatEncoderFS{encoderFS{
-		Filesystem:  bfs,
-		encoderType: EncoderTypeFat,
-	}}
+	ffs := &fatEncoderFS{
+		encoderFS: encoderFS{
+			Filesystem:  bfs,
+			encoderType: EncoderTypeFat,
+		},
+		decoder:        fat.PUA.NewDecoder(),
+		encoder:        fat.PUA.NewEncoder(),
+		patternEncoder: fat.PUAPattern.NewEncoder(),
+	}
 	ffs.Encoder = ffs
 	ffs.SetRooter(ffs)
 	return ffs

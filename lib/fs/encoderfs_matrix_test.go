@@ -58,6 +58,10 @@ var encoderTestMatrix = map[fsutil.VolumeType]map[EncoderType]encoderTest{
 			decodeOK: true,
 			encodeOK: false,
 		},
+		EncoderTypeWindows: {
+			decodeOK: true,
+			encodeOK: false,
+		},
 	},
 	fsutil.VolumeTypeFat: {
 		EncoderTypeNone: {
@@ -65,6 +69,10 @@ var encoderTestMatrix = map[fsutil.VolumeType]map[EncoderType]encoderTest{
 			encodeOK: true,
 		},
 		EncoderTypeFat: {
+			decodeOK: true,
+			encodeOK: false,
+		},
+		EncoderTypeWindows: {
 			decodeOK: true,
 			encodeOK: false,
 		},

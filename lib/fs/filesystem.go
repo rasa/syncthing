@@ -243,7 +243,7 @@ func NewFilesystem(fsType FilesystemType, uri string, opts ...Option) Filesystem
 			mtimeOpt = opt
 		case *OptionNoneEncoder:
 			// We don't instantiate None encoders, except in the test suite.
-		case *OptionFatEncoder:
+		case *OptionFatEncoder, *OptionWindowsEncoder:
 			encoderOpt = opt
 		default:
 			opts[i] = opt

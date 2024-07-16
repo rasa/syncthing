@@ -42,6 +42,8 @@ func EncoderTypeOption(encoderType EncoderType) Option {
 		return new(OptionNoneEncoder)
 	case EncoderTypeFat:
 		return new(OptionFatEncoder)
+	case EncoderTypeWindows:
+		return new(OptionWindowsEncoder)
 	default:
 		panic("bug: unknown encoder " + encoderType.String())
 	}

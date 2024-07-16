@@ -55,6 +55,8 @@ func TestMain(m *testing.M) {
 	if !slices.Contains(os.Args, "-test.short=true") {
 		ffs := NewFilesystem(FilesystemTypeBasic, testDirAbs, []Option{new(OptionFatEncoder)}...)
 		testFSs = append(testFSs, ffs)
+		wfs := NewFilesystem(FilesystemTypeBasic, testDirAbs, []Option{new(OptionWindowsEncoder)}...)
+		testFSs = append(testFSs, wfs)
 		// This passes all tests, but is a total waste of time:
 		// nfs := newNoneEncoderFS(testDirAbs)
 		// testFSs = append(testFSs, nfs)
@@ -676,15 +678,24 @@ func getEncoderName(fs Filesystem) string {
 		if ffs, ok := ufs.(*fatEncoderFS); ok {
 			return ffs.EncoderType().String()
 		}
+		if wfs, ok := ufs.(*windowsEncoderFS); ok {
+			return wfs.EncoderType().String()
+		}
 	}
 	return ""
 }
 
 func testOpts() []Option {
 	opts := make([]Option, 0)
-	_, ok := unwrapFilesystem(testFs, filesystemWrapperTypeEncoder)
-	if ok {
+	encoderName := getEncoderName(testFs)
+	switch encoderName {
+	case "none":
+	case "fat":
 		opts = append(opts, new(OptionFatEncoder))
+	case "windows":
+		opts = append(opts, new(OptionWindowsEncoder))
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown encoder")
 	}
 	return opts
 }

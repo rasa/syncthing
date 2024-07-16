@@ -504,10 +504,11 @@
                         </td>
                       </tr>
                       <tr ng-if="folder.encoderType != 'unset' && folder.encoderType != 'none'">
-                        <th><span class="fas fa-fw fa-file fa-solid"></span>&nbsp;<span translate>Filename Encoder</span></th>
+                        <th><span class="fas fa-fw fa-random"></span>&nbsp;<span translate>Filename Encoder</span></th>
                         <td class="text-right">
-                          <span ng-if="folder.encoderType == 'fat'">FAT</span>
-                          <span ng-if="folder.encoderType == 'none'">None</span>
+                          <span ng-if="folder.encoderType == 'none'" translate>None</span>
+                          <span ng-if="folder.encoderType == 'fat'" translate>FAT</span>
+                          <span ng-if="folder.encoderType == 'windows'" translate>Windows</span>
                         </td>
                       </tr>
                       <tr ng-if="folder.ignorePerms">

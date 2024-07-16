@@ -12,6 +12,8 @@ func (t EncoderType) String() string {
 		return "none"
 	case EncoderTypeFat:
 		return "fat"
+	case EncoderTypeWindows:
+		return "windows"
 	case EncoderTypeUnset:
 		return "unset"
 	default:
@@ -29,6 +31,8 @@ func (t *EncoderType) UnmarshalText(bs []byte) error {
 		*t = EncoderTypeNone
 	case "fat":
 		*t = EncoderTypeFat
+	case "windows":
+		*t = EncoderTypeWindows
 	case "unset":
 		*t = EncoderTypeUnset
 	default:

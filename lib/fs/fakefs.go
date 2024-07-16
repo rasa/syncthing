@@ -1082,7 +1082,7 @@ func (fs *fakeFS) rooted(rel string) (string, error) {
 	if !fs.isValid(rel) {
 		return "", os.ErrNotExist
 	}
-	if fs.encoderType == EncoderTypeFat {
+	if fs.encoderType == EncoderTypeFat || fs.encoderType == EncoderTypeWindows {
 		if fs.pattern {
 			return fat.EncodePattern(rel)
 		} else {
@@ -1093,7 +1093,7 @@ func (fs *fakeFS) rooted(rel string) (string, error) {
 }
 
 func (fs *fakeFS) unrooted(path string) string {
-	if fs.encoderType == EncoderTypeFat {
+	if fs.encoderType == EncoderTypeFat || fs.encoderType == EncoderTypeWindows {
 		return fat.MustDecode(path)
 	}
 	return path
@@ -1120,7 +1120,7 @@ func (fs *fakeFS) isValid(name string) bool {
 
 	switch fs.encoderType {
 	case EncoderTypeUnset, EncoderTypeNone:
-	case EncoderTypeFat:
+	case EncoderTypeFat, EncoderTypeWindows:
 	default:
 		l.Warnf("Unexpected encoderType %v, please update fakefs.go's isValid()", fs.encoderType)
 	}
@@ -1135,7 +1135,7 @@ func (fs *fakeFS) isValid(name string) bool {
 
 	// The FAT encoder rejects filenames containing encoded characters, even on
 	// Ext/ext-like volumes.
-	if fs.encoderType == EncoderTypeFat && fat.IsEncoded(name) {
+	if (fs.encoderType == EncoderTypeFat || fs.encoderType == EncoderTypeWindows) && fat.IsEncoded(name) {
 		return false
 	}
 
@@ -1150,7 +1150,7 @@ func (fs *fakeFS) isValid(name string) bool {
 	}
 
 	// The FAT encoder accepts filenames with reserved characters.
-	if fs.encoderType == EncoderTypeFat {
+	if fs.encoderType == EncoderTypeFat || fs.encoderType == EncoderTypeWindows {
 		return true
 	}
 

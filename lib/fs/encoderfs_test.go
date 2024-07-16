@@ -37,6 +37,8 @@ func TestEncoderOptions(t *testing.T) {
 			want = new(OptionNoneEncoder).String()
 		case EncoderTypeFat:
 			want = new(OptionFatEncoder).String()
+		case EncoderTypeWindows:
+			want = new(OptionWindowsEncoder).String()
 		default:
 			t.Errorf("Missing test for EncoderType %v", encoderType)
 		}
@@ -66,6 +68,17 @@ func TestEncoderNewFilesystem(t *testing.T) {
 				// s'll good man
 			case EncoderTypeFat:
 				ffs, ok := unwrappedFS.(*fatEncoderFS)
+				if !ok {
+					t.Errorf("NewFilesystem(%v) expected to instantiate an encoder",
+						encoderType)
+				}
+				got := ffs.EncoderType()
+				if encoderType != got {
+					t.Errorf("NewFilesystem(%v) expected %v, got %v",
+						encoderType, got, encoderType)
+				}
+			case EncoderTypeWindows:
+				ffs, ok := unwrappedFS.(*windowsEncoderFS)
 				if !ok {
 					t.Errorf("NewFilesystem(%v) expected to instantiate an encoder",
 						encoderType)

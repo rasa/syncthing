@@ -26,8 +26,7 @@ const (
 	// NumChars is the range of characters we might encode (0-0xff).
 	NumChars = 0x100 // 256
 	// Encodes contains the characters the FAT encoder encodes.
-	Encodes =
-	/***/ "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f" +
+	Encodes = "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f" +
 		"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f" +
 		`"*:<>?|` // \x22, \x2a, \x3a, \x3c, \x3e, \x3f, \x7c
 	// Nevers contains characters we never encode.
@@ -125,9 +124,12 @@ func IsEncoded(name string) bool {
 		if r < BaseRune || r >= (BaseRune+NumChars) {
 			continue
 		}
-		if puaEncodes[r&0xff] >= BaseRune {
-			return true
-		}
+		return true
+		// The Windows encoder can encode any Latin1 character, so this check 
+		// is no longer applicable.
+		// if puaEncodes[r&0xff] >= BaseRune {
+		// 	return true
+		// }
 	}
 
 	return false

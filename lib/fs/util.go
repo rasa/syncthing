@@ -56,25 +56,38 @@ const windowsDisallowedCharacters = (`<>:"|?*` +
 // encoder. Uses lexical analysis only.
 func WindowsInvalidPath(name string, encoderType EncoderType) error {
 	switch encoderType {
+	case EncoderTypeWindows:
+		return nil
 	case EncoderTypeFat:
 		// The FAT encoder "saves" files containing invalid characters. It still
-		// allows filenames that end in a period or space, and reserved
+		// rejects filenames that end in a period or space, and reserved
 		// Windows filenames such as CON or NUL.txt. This can be addressed later,
 		// if desired.
-		return WindowsReservedFilename(name)
+		//return WindowsReservedFilename(name)
+		return nil
 	case EncoderTypeUnset, EncoderTypeNone:
 		fallthrough
 	default:
-		return WindowsInvalidFilename(name)
 	}
+	return WindowsInvalidFilename(name)
+}
+
+// WindowsInvalidCharacters returns an error if name contains characters that are
+// reserved on Windows. Uses lexical analysis only.
+func WindowsInvalidCharacters(name string) error {
+	// The path must not contain any disallowed characters.
+	if idx := strings.IndexAny(name, windowsDisallowedCharacters); idx != -1 {
+		return fmt.Errorf("%w: %q", errInvalidFilenameWindowsReservedChar, name[idx:idx+1])
+	}
+	return nil
 }
 
 // WindowsInvalidFilename returns an error if name contains characters that are
 // reserved on Windows. Uses lexical analysis only.
 func WindowsInvalidFilename(name string) error {
-	// The path must not contain any disallowed characters.
-	if idx := strings.IndexAny(name, windowsDisallowedCharacters); idx != -1 {
-		return fmt.Errorf("%w: %q", errInvalidFilenameWindowsReservedChar, name[idx:idx+1])
+	err := WindowsInvalidCharacters(name)
+	if err != nil {
+		return err
 	}
 	return WindowsReservedFilename(name)
 }

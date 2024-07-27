@@ -13,7 +13,8 @@ import (
 	"slices"
 	"sort"
 	"testing"
-
+	"time"
+	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/rc"
 )
 
@@ -32,6 +33,9 @@ func TestCLIReset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if build.IsWindows {
+		time.Sleep(time.Second)
+	}
 
 	dbDir := filepath.Join(instance.syncthingDir, indexDbDir)
 	err = os.MkdirAll(dbDir, 0o700)
@@ -45,7 +49,7 @@ func TestCLIReset(t *testing.T) {
 	cmd.Stderr = os.Stdout
 	err = cmd.Run()
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	_, err = os.Stat(dbDir)
@@ -67,7 +71,7 @@ func TestCLIGenerate(t *testing.T) {
 	cmd.Stderr = os.Stdout
 	err := cmd.Run()
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	found := walk(t, generateDir)

@@ -17,4 +17,8 @@ func init() {
 	if logger.DefaultLogger.ShouldDebug("walkfs") {
 		l.SetDebug("fs", true)
 	}
+	logger.DefaultLogger.NewFacility("encoder", "Encoding filenames")
+	if logger.DefaultLogger.ShouldDebug("encoder") {
+		l.SetDebug("fs", true)
+	}
 }

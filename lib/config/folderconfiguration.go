@@ -85,6 +85,7 @@ type FolderConfiguration struct {
 	SyncXattrs              bool                        `json:"syncXattrs" xml:"syncXattrs"`
 	SendXattrs              bool                        `json:"sendXattrs" xml:"sendXattrs"`
 	XattrFilter             XattrFilter                 `json:"xattrFilter" xml:"xattrFilter"`
+	EncoderType             EncoderType                 `json:"encoderType" xml:"encoderType" default:"unset"`
 	// Legacy deprecated
 	DeprecatedReadOnly       bool    `json:"-" xml:"ro,attr,omitempty"`        // Deprecated: Do not use.
 	DeprecatedMinDiskFreePct float64 `json:"-" xml:"minDiskFreePct,omitempty"` // Deprecated: Do not use.
@@ -123,7 +124,7 @@ func (f FolderConfiguration) Copy() FolderConfiguration {
 func (f FolderConfiguration) Filesystem(fset *db.FileSet) fs.Filesystem {
 	// This is intentionally not a pointer method, because things like
 	// cfg.Folders["default"].Filesystem(nil) should be valid.
-	opts := make([]fs.Option, 0, 3)
+	opts := make([]fs.Option, 0, 4)
 	if f.FilesystemType == FilesystemTypeBasic && f.JunctionsAsDirs {
 		opts = append(opts, new(fs.OptionJunctionsAsDirs))
 	}
@@ -132,6 +133,13 @@ func (f FolderConfiguration) Filesystem(fset *db.FileSet) fs.Filesystem {
 	}
 	if fset != nil {
 		opts = append(opts, fset.MtimeOption())
+	}
+	// We never instantiate "None" encoders, except in the test suite.
+	switch f.EncoderType {
+	case EncoderTypeUnset, EncoderTypeNone:
+		// noop
+	default:
+		opts = append(opts, fs.EncoderTypeOption(f.EncoderType.ToEncoderType()))
 	}
 	return fs.NewFilesystem(f.FilesystemType.ToFS(), f.Path, opts...)
 }

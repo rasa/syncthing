@@ -30,6 +30,7 @@ const (
 	filesystemWrapperTypeWalk
 	filesystemWrapperTypeLog
 	filesystemWrapperTypeMetrics
+	filesystemWrapperTypeEncoder
 )
 
 type XattrFilter interface {
@@ -229,9 +230,10 @@ type Option interface {
 func NewFilesystem(fsType FilesystemType, uri string, opts ...Option) Filesystem {
 	var caseOpt Option
 	var mtimeOpt Option
+	var encoderOpt Option
 	i := 0
 	for _, opt := range opts {
-		if caseOpt != nil && mtimeOpt != nil {
+		if caseOpt != nil && mtimeOpt != nil && encoderOpt != nil {
 			break
 		}
 		switch opt.(type) {
@@ -239,6 +241,10 @@ func NewFilesystem(fsType FilesystemType, uri string, opts ...Option) Filesystem
 			caseOpt = opt
 		case *optionMtime:
 			mtimeOpt = opt
+		case *OptionNoneEncoder:
+			// We don't instantiate None encoders, except in the test suite.
+		case *OptionFatEncoder:
+			encoderOpt = opt
 		default:
 			opts[i] = opt
 			i++
@@ -259,6 +265,13 @@ func NewFilesystem(fsType FilesystemType, uri string, opts ...Option) Filesystem
 			uri:    uri,
 			err:    errors.New("filesystem with type " + fsType.String() + " does not exist."),
 		}
+	}
+
+	// Encoding is innermost, as it sets the filesystem's Rooter, and its
+	// encoding/decoding logic doesn't interfere with case handling, as the
+	// characters it encodes are never alphabetic.
+	if encoderOpt != nil {
+		fs = encoderOpt.apply(fs)
 	}
 
 	// mtime handling should happen inside walking, as filesystem calls while

@@ -659,6 +659,7 @@ func (f *folder) scanSubdirsChangedAndNew(subDirs []string, batch *scanBatch) (i
 		ScanOwnership:         f.SendOwnership || f.SyncOwnership,
 		ScanXattrs:            f.SendXattrs || f.SyncXattrs,
 		XattrFilter:           f.XattrFilter,
+		EncoderType:           f.EncoderType.ToEncoderType(),
 	}
 	var fchan chan scanner.ScanResult
 	if f.Type == config.FolderTypeReceiveEncrypted {

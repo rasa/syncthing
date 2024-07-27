@@ -286,6 +286,7 @@ func (s *Service) reportData(ctx context.Context, urVersion int, preview bool) (
 			if cfg.SyncOwnership {
 				report.FolderUsesV3.SyncOwnership++
 			}
+			report.FolderUsesV3.EncoderType[cfg.EncoderType.String()]++
 		}
 		sort.Ints(report.FolderUsesV3.FsWatcherDelays)
 

@@ -7,15 +7,17 @@
 package integration
 
 import (
-	"fmt"
+	"encoding/hex"
+	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
-	"golang.org/x/exp/slices"
-
+	"github.com/syncthing/syncthing/lib/encoding/fat"
 	"github.com/syncthing/syncthing/lib/rand"
 	"github.com/syncthing/syncthing/lib/sha256"
 )
@@ -23,21 +25,59 @@ import (
 // These will not match, so we ignore them.
 var ignores = []string{".", ".stfolder", ".stversions"}
 
+type walkResults struct {
+	found   int
+	missing int
+}
+
 // generateTree generates n files with random data in a temporary directory
 // and returns the path to the directory.
 func generateTree(t *testing.T, n int) string {
 	t.Helper()
 	dir := t.TempDir()
+	_ = generateTreeWithPrefixes(t, dir, n, []string{})
+
+	return dir
+}
+
+// generateTreeWithPrefixes generates n files with random data in directory dir
+// and returns the number of files created in the directory. prefixes is a
+// string array of 0 to 2 elements. If prefixes[0] is not empty, for each file
+// created, the filename will be prefixed with next prefix character in
+// prefixes[0]. Once all prefix characters have been used, they will be reused.
+// So if n an even number, and prefixes[0] contains `_1_2_3_4`, then 50% of
+// the files created will begin with `_`, and 12.5% of the files will begin
+// with `1`. prefixes[1] contains a common prefix for all filenames, so if
+// prefixes[0] is `_1_2` and prefixes[1] is `s`, the first file will be prefixed
+// with 's_' and the second with 's1'.
+func generateTreeWithPrefixes(t *testing.T, dir string, n int, prefixes []string) int {
+	t.Helper()
+
+	var runes []rune
+	if len(prefixes) > 0 {
+		runes = []rune(prefixes[0])
+	}
+	created := 0
 	for i := 0; i < n; i++ {
 		// Generate a random string. The first character is the directory
 		// name, the rest is the file name.
 		rnd := strings.ToLower(rand.String(16))
 		sub := rnd[:1]
 		file := rnd[1:]
+		if len(runes) > 0 {
+			// We add underscores so we can easily ignore them on a Windows peer. It
+			// also makes the encoded characters stand out in certain fonts.
+			file = "_" + string(runes[i%len(runes)]) + "_" + file
+		}
+		if len(prefixes) >= 2 {
+			file = prefixes[1] + file
+		}
 		size := 512<<10 + rand.Intn(1024)<<10 // between 512 KiB and 1.5 MiB
-
+		err := os.MkdirAll(filepath.Join(dir, sub), 0o700)
+		if err != nil {
+			t.Fatal(err)
+		}
 		// Create the file with random data.
-		os.Mkdir(filepath.Join(dir, sub), 0o700)
 		lr := io.LimitReader(rand.Reader, int64(size))
 		fd, err := os.Create(filepath.Join(dir, sub, file))
 		if err != nil {
@@ -50,8 +90,10 @@ func generateTree(t *testing.T, n int) string {
 		if err := fd.Close(); err != nil {
 			t.Fatal(err)
 		}
+		created++
 	}
-	return dir
+
+	return created
 }
 
 // compareTrees compares the contents of two directories recursively. It
@@ -60,7 +102,26 @@ func generateTree(t *testing.T, n int) string {
 func compareTrees(t *testing.T, a, b string) int {
 	t.Helper()
 
-	nfiles := 0
+	// We pass dstTypeSkipped so we don't encode or decode filenames
+	walkResults := compareTreesByType(t, a, b, dstTypeSkipped)
+	if walkResults.missing > 0 {
+		t.Errorf("got %d files, want %d files", walkResults.found, walkResults.found+walkResults.missing)
+	}
+
+	return walkResults.found
+}
+
+// compareTreesByType compares the contents of two directories recursively. It
+// reports any differences (other than missing files) as test failures.
+// Returns the number of files that were found and missing.
+func compareTreesByType(t *testing.T, a, b string, dstType dstType) walkResults {
+	t.Helper()
+
+	walkResults := walkResults{0, 0}
+
+	// These will not match, so we ignore them.
+	ignore := []string{".", ".stfolder"}
+
 	if err := filepath.Walk(a, func(path string, aInfo os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -73,16 +134,43 @@ func compareTrees(t *testing.T, a, b string) int {
 
 		// We need to ignore any files under .stfolder, too.
 		// See https://github.com/syncthing/syncthing/pull/9525
-		if slices.ContainsFunc(ignores, func(ignore string) bool {
+		if slices.ContainsFunc(ignore, func(ignore string) bool {
 			return strings.HasPrefix(rel, ignore)
 		}) {
 			return nil
 		}
 
+		switch dstType {
+		case dstTypeEncoded, dstTypeRejectEncoded:
+			rel = fat.MustEncode(rel)
+		case dstTypeDecoded:
+			rel = fat.MustDecode(rel)
+		case dstTypeSkipped:
+			// added to quiet linter
+		}
+
+		isDir := aInfo.IsDir()
+
 		bPath := filepath.Join(b, rel)
 		bInfo, err := os.Stat(bPath)
 		if err != nil {
+			var pathError *fs.PathError
+			if errors.As(err, &pathError) {
+				err2u := pathError.Unwrap()
+				if errors.Is(err2u, os.ErrNotExist) {
+					if !isDir {
+						walkResults.missing++
+					}
+
+					return nil
+				}
+			}
+
 			return err
+		}
+
+		if !isDir {
+			walkResults.found++
 		}
 
 		if aInfo.IsDir() != bInfo.IsDir() {
@@ -113,15 +201,14 @@ func compareTrees(t *testing.T, a, b string) int {
 			if aHash != bHash {
 				t.Errorf("mismatched hash: %q", rel)
 			}
-
-			nfiles++
 		}
 
 		return nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	return nfiles
+
+	return walkResults
 }
 
 func sha256file(fname string) (string, error) {
@@ -136,7 +223,8 @@ func sha256file(fname string) (string, error) {
 		return "", err
 	}
 	hb := h.Sum(nil)
-	return fmt.Sprintf("%x", hb), nil
+
+	return hex.EncodeToString(hb), nil
 }
 
 func walk(t *testing.T, dir string) []string {
@@ -175,4 +263,31 @@ func walk(t *testing.T, dir string) []string {
 	}
 
 	return files
+}
+
+func getTempDir(t *testing.T, prefix string) string {
+	t.Helper()
+
+	base := os.Getenv("STFSTESTPATH")
+	if base != "" {
+		err := os.MkdirAll(base, 0o700)
+		if err != nil {
+			t.Fatalf("Cannot create directory %v: %v", base, err)
+		}
+		dir, err := os.MkdirTemp(base, prefix)
+		if err != nil {
+			t.Fatalf("Cannot create directory in %v: %v", base, err)
+		}
+
+		return dir
+	}
+
+	return t.TempDir()
+}
+
+// cleanup removes the temporary directories after a successful test run.
+func cleanup(dirs []string) {
+	for _, dir := range dirs {
+		_ = os.RemoveAll(dir)
+	}
 }

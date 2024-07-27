@@ -52,7 +52,7 @@ func (f FolderConfiguration) Copy() FolderConfiguration {
 func (f FolderConfiguration) Filesystem(fset *db.FileSet) fs.Filesystem {
 	// This is intentionally not a pointer method, because things like
 	// cfg.Folders["default"].Filesystem(nil) should be valid.
-	opts := make([]fs.Option, 0, 3)
+	opts := make([]fs.Option, 0, 4)
 	if f.FilesystemType == fs.FilesystemTypeBasic && f.JunctionsAsDirs {
 		opts = append(opts, new(fs.OptionJunctionsAsDirs))
 	}
@@ -61,6 +61,13 @@ func (f FolderConfiguration) Filesystem(fset *db.FileSet) fs.Filesystem {
 	}
 	if fset != nil {
 		opts = append(opts, fset.MtimeOption())
+	}
+	// We never instantiate "None" encoders, except in the test suite.
+	switch f.EncoderType {
+	case fs.EncoderTypeUnset, fs.EncoderTypeNone:
+		// noop
+	default:
+		opts = append(opts, fs.EncoderTypeOption(f.EncoderType))
 	}
 	return fs.NewFilesystem(f.FilesystemType, f.Path, opts...)
 }

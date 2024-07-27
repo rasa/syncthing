@@ -171,3 +171,25 @@ func TestIsParent(t *testing.T) {
 		}
 	}
 }
+
+func (t filesystemWrapperType) String() string {
+	switch t {
+	case filesystemWrapperTypeNone:
+		return "none"
+	case filesystemWrapperTypeMtime:
+		return "mtime"
+	case filesystemWrapperTypeCase:
+		return "case"
+	case filesystemWrapperTypeError:
+		return "error"
+	case filesystemWrapperTypeWalk:
+		return "walk"
+	case filesystemWrapperTypeLog:
+		return "log"
+	case filesystemWrapperTypeMetrics:
+		return "metrics"
+	case filesystemWrapperTypeEncoder:
+		return "encoder"
+	}
+	return "unknown"
+}

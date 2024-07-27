@@ -41,9 +41,20 @@ func (*OptionJunctionsAsDirs) String() string {
 	return "junctionsAsDirs"
 }
 
+// The Rooter interface allows us to abstract the rooted/unrooted functions
+// making it easy to implement filename encoding for reserved characters on
+// FAT-like filesystems.
+type Rooter interface {
+	rooted(rel string) (string, error)
+	unrooted(path string) string
+	// exported since BasicFilesystem itself is exported
+	SetRooter(rooter Rooter)
+}
+
 // The BasicFilesystem implements all aspects by delegating to package os.
 // All paths are relative to the root and cannot (should not) escape the root directory.
 type BasicFilesystem struct {
+	Rooter
 	root            string
 	junctionsAsDirs bool
 	options         []Option
@@ -97,6 +108,7 @@ func newBasicFilesystem(root string, opts ...Option) *BasicFilesystem {
 		userCache:  newValueCache(time.Hour, user.LookupId),
 		groupCache: newValueCache(time.Hour, user.LookupGroupId),
 	}
+	fs.Rooter = fs // or panic will ensue
 	for _, opt := range opts {
 		opt.apply(fs)
 	}
@@ -131,8 +143,19 @@ func (f *BasicFilesystem) unrooted(path string) string {
 	return rel(path, f.root)
 }
 
+// SetRooter overrides the default rooted() and unrooted() functions with the
+// functions of the passed rooter, such as an encoder. If nil is passed, the
+// rooter reverts to the default rooted/unrooted functions.
+func (f *BasicFilesystem) SetRooter(rooter Rooter) {
+	if rooter != nil {
+		f.Rooter = rooter
+	} else {
+		f.Rooter = f
+	}
+}
+
 func (f *BasicFilesystem) Chmod(name string, mode FileMode) error {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return err
 	}
@@ -140,7 +163,7 @@ func (f *BasicFilesystem) Chmod(name string, mode FileMode) error {
 }
 
 func (f *BasicFilesystem) Chtimes(name string, atime time.Time, mtime time.Time) error {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return err
 	}
@@ -148,7 +171,7 @@ func (f *BasicFilesystem) Chtimes(name string, atime time.Time, mtime time.Time)
 }
 
 func (f *BasicFilesystem) Mkdir(name string, perm FileMode) error {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return err
 	}
@@ -160,7 +183,7 @@ func (f *BasicFilesystem) Mkdir(name string, perm FileMode) error {
 // The permission bits perm are used for all directories that MkdirAll creates.
 // If path is already a directory, MkdirAll does nothing and returns nil.
 func (f *BasicFilesystem) MkdirAll(path string, perm FileMode) error {
-	path, err := f.rooted(path)
+	path, err := f.Rooter.rooted(path)
 	if err != nil {
 		return err
 	}
@@ -169,7 +192,7 @@ func (f *BasicFilesystem) MkdirAll(path string, perm FileMode) error {
 }
 
 func (f *BasicFilesystem) Lstat(name string) (FileInfo, error) {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +204,7 @@ func (f *BasicFilesystem) Lstat(name string) (FileInfo, error) {
 }
 
 func (f *BasicFilesystem) RemoveAll(name string) error {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return err
 	}
@@ -189,11 +212,11 @@ func (f *BasicFilesystem) RemoveAll(name string) error {
 }
 
 func (f *BasicFilesystem) Rename(oldpath, newpath string) error {
-	oldpath, err := f.rooted(oldpath)
+	oldpath, err := f.Rooter.rooted(oldpath)
 	if err != nil {
 		return err
 	}
-	newpath, err = f.rooted(newpath)
+	newpath, err = f.Rooter.rooted(newpath)
 	if err != nil {
 		return err
 	}
@@ -201,7 +224,7 @@ func (f *BasicFilesystem) Rename(oldpath, newpath string) error {
 }
 
 func (f *BasicFilesystem) Stat(name string) (FileInfo, error) {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +236,7 @@ func (f *BasicFilesystem) Stat(name string) (FileInfo, error) {
 }
 
 func (f *BasicFilesystem) DirNames(name string) ([]string, error) {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +255,7 @@ func (f *BasicFilesystem) DirNames(name string) ([]string, error) {
 }
 
 func (f *BasicFilesystem) Open(name string) (File, error) {
-	rootedName, err := f.rooted(name)
+	rootedName, err := f.Rooter.rooted(name)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +267,7 @@ func (f *BasicFilesystem) Open(name string) (File, error) {
 }
 
 func (f *BasicFilesystem) OpenFile(name string, flags int, mode FileMode) (File, error) {
-	rootedName, err := f.rooted(name)
+	rootedName, err := f.Rooter.rooted(name)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +279,7 @@ func (f *BasicFilesystem) OpenFile(name string, flags int, mode FileMode) (File,
 }
 
 func (f *BasicFilesystem) Create(name string) (File, error) {
-	rootedName, err := f.rooted(name)
+	rootedName, err := f.Rooter.rooted(name)
 	if err != nil {
 		return nil, err
 	}
@@ -273,20 +296,20 @@ func (*BasicFilesystem) Walk(_ string, _ WalkFunc) error {
 }
 
 func (f *BasicFilesystem) Glob(pattern string) ([]string, error) {
-	pattern, err := f.rooted(pattern)
+	pattern, err := f.Rooter.rooted(pattern)
 	if err != nil {
 		return nil, err
 	}
 	files, err := filepath.Glob(pattern)
 	unrooted := make([]string, len(files))
 	for i := range files {
-		unrooted[i] = f.unrooted(files[i])
+		unrooted[i] = f.Rooter.unrooted(files[i])
 	}
 	return unrooted, err
 }
 
 func (f *BasicFilesystem) Usage(name string) (Usage, error) {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return Usage{}, err
 	}
@@ -314,14 +337,21 @@ func (f *BasicFilesystem) Options() []Option {
 
 func (*BasicFilesystem) SameFile(fi1, fi2 FileInfo) bool {
 	// Like os.SameFile, we always return false unless fi1 and fi2 were created
-	// by this package's Stat/Lstat method.
+	// by the same filesystem's Stat/Lstat method.
+
 	f1, ok1 := fi1.(basicFileInfo)
 	f2, ok2 := fi2.(basicFileInfo)
-	if !ok1 || !ok2 {
-		return false
+	if ok1 && ok2 {
+		return os.SameFile(f1.osFileInfo(), f2.osFileInfo())
 	}
 
-	return os.SameFile(f1.osFileInfo(), f2.osFileInfo())
+	ef1, ok1 := fi1.(encoderFileInfo)
+	ef2, ok2 := fi2.(encoderFileInfo)
+	if ok1 && ok2 {
+		return os.SameFile(ef1.osFileInfo(), ef2.osFileInfo())
+	}
+
+	return false
 }
 
 func (*BasicFilesystem) underlying() (Filesystem, bool) {

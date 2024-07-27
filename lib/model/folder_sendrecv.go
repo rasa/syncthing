@@ -342,13 +342,18 @@ func (f *sendReceiveFolder) processNeeded(snap *db.Snapshot, dbUpdateChan chan<-
 
 		file := intf.(protocol.FileInfo)
 
+		var err error
+		if build.IsWindows {
+			err = fs.WindowsInvalidPath(file.Name, f.EncoderType)
+		}
+
 		switch {
 		case f.ignores.Match(file.Name).IsIgnored():
 			file.SetIgnored()
 			l.Debugln(f, "Handling ignored file", file)
 			dbUpdateChan <- dbUpdateJob{file, dbUpdateInvalidate}
 
-		case build.IsWindows && fs.WindowsInvalidFilename(file.Name) != nil:
+		case err != nil:
 			if file.IsDeleted() {
 				// Just pretend we deleted it, no reason to create an error
 				// about a deleted file that we can't have anyway.
@@ -358,7 +363,7 @@ func (f *sendReceiveFolder) processNeeded(snap *db.Snapshot, dbUpdateChan chan<-
 			} else {
 				// We can't pull an invalid file. Grab the error again since
 				// we couldn't assign it directly in the case clause.
-				f.newPullError(file.Name, fs.WindowsInvalidFilename(file.Name))
+				f.newPullError(file.Name, err)
 				// No reason to retry for this
 				changed--
 			}

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package fs;
+
+import "repos/protobuf/gogoproto/gogo.proto";
+
+enum EncoderType {
+    option (gogoproto.goproto_enum_stringer) = false;
+
+    // The "None" filename encoder does not encode filenames, and it's only
+    // instantiated in our test suite. They are not used in non-test code.
+    ENCODER_TYPE_NONE = 0;
+    // The "FAT" filename encoder encodes characters reserved on
+    // vFAT/exFAT/NTFS/reFS and similar filesystems. It does not encode
+    // filenames ending with spaces or periods, which are accepted on Android,
+    // but are rejected on Windows. It also does not encode Windows' reserved
+    // filenames, such as `NUL` or `CON.txt`.
+    ENCODER_TYPE_FAT = 1;
+    // Unset is not a filename encoder. It is only used to allow us to override
+    // the default encoder type to FAT on Windows, if the user hasn't set the
+    // default themselves.
+    ENCODER_TYPE_UNSET = -1;
+}

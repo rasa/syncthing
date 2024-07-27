@@ -503,6 +503,13 @@
                           <span ng-if="folder.type == 'receiveencrypted'" translate>Receive Encrypted</span>
                         </td>
                       </tr>
+                      <tr ng-if="folder.encoderType != 'unset' && folder.encoderType != 'none'">
+                        <th><span class="fas fa-fw fa-save"></span>&nbsp;<span translate>Filename Encoder</span></th>
+                        <td class="text-right">
+                          <span ng-if="folder.encoderType == 'fat'" translate>FAT</span>
+                          <span ng-if="folder.encoderType == 'none'" translate>None</span>
+                        </td>
+                      </tr>
                       <tr ng-if="folder.ignorePerms">
                         <th><span class="far fa-fw fa-minus-square"></span>&nbsp;<span translate>Ignore Permissions</span></th>
                         <td class="text-right">

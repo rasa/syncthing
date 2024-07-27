@@ -52,12 +52,37 @@ const windowsDisallowedCharacters = (`<>:"|?*` +
 	"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f" +
 	"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f")
 
+// WindowsInvalidPath returns an error if name is invalid for the specified
+// encoder. Uses lexical analysis only.
+func WindowsInvalidPath(name string, encoderType EncoderType) error {
+	switch encoderType {
+	case EncoderTypeFat:
+		// The FAT encoder "saves" files containing invalid characters. It still
+		// allows filenames that end in a period or space, and reserved
+		// Windows filenames such as CON or NUL.txt. This can be addressed later,
+		// if desired.
+		return WindowsReservedFilename(name)
+	case EncoderTypeUnset, EncoderTypeNone:
+		fallthrough
+	default:
+		return WindowsInvalidFilename(name)
+	}
+}
+
+// WindowsInvalidFilename returns an error if name contains characters that are
+// reserved on Windows. Uses lexical analysis only.
 func WindowsInvalidFilename(name string) error {
 	// The path must not contain any disallowed characters.
 	if idx := strings.IndexAny(name, windowsDisallowedCharacters); idx != -1 {
 		return fmt.Errorf("%w: %q", errInvalidFilenameWindowsReservedChar, name[idx:idx+1])
 	}
+	return WindowsReservedFilename(name)
+}
 
+// WindowsReservedFilename returns an error if name is reserved on Windows,
+// such as CON, or NUL.txt, or if it ends in a period or space. Uses lexical
+// analysis only.
+func WindowsReservedFilename(name string) error {
 	// None of the path components should end in space or period, or be a
 	// reserved name.
 	for len(name) > 0 {

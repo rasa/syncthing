@@ -306,7 +306,7 @@ func testEncoderSyncMergeTwoDevices(t *testing.T, srcEncoder, dstEncoder fs.Enco
 		suffix2 = fmt.Sprintf(", and Windows couldn't save %d decoded filenames", dstCreated/2)
 	}
 	t.Logf("dst %v encoder synced %d files (%d regular and %d %v filenames)%v%v",
-		dstEncoder, got, synced, synced, dstTypeMap[dstType], rejected, suffix, suffix2)
+		dstEncoder, got, synced, synced, dstTypeMap[dstType], suffix, suffix2)
 
 	cleanup([]string{srcDir, dstDir})
 }

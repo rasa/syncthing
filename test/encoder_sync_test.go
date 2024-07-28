@@ -242,11 +242,12 @@ func testEncoderSyncOneSideToOther(t *testing.T, srcEncoder, dstEncoder fs.Encod
 	// The number of encoded/decoded filenames is only half of all filenames synced.
 	synced := got / 2
 	rejected := created - want
-	if rejected == 0 {
-		t.Logf("dst %v encoder synced %d %v filenames", dstEncoder, synced, dstTypeMap[dstType])
-	} else {
-		t.Logf("dst %v encoder synced %d %v filenames and rejected %d encoded filenames on the wire", dstEncoder, synced, dstTypeMap[dstType], rejected)
+	suffix := ""
+	if rejected != 0 {
+		suffix = fmt.Sprintf(", and rejected %d encoded filenames received on the wire", rejected)
 	}
+	t.Logf("dst %v encoder synced %d files (%d regular and %d %v filenames)%v",
+		dstEncoder, got, synced, synced, dstTypeMap[dstType], suffix)
 	cleanup([]string{srcDir, dstDir})
 }
 
@@ -296,15 +297,17 @@ func testEncoderSyncMergeTwoDevices(t *testing.T, srcEncoder, dstEncoder fs.Enco
 	// The number of encoded/decoded filenames is only half of all files synced.
 	synced := got / 2
 	rejected := srcCreated + dstCreated - want
-	if rejected == 0 {
-		t.Logf("dst %v encoder synced %d %v filenames", dstEncoder, synced, dstTypeMap[dstType])
-	} else {
-		suffix := ""
-		if build.IsWindows {
-			suffix = fmt.Sprintf(", and Windows couldn't save %d decoded filenames", dstCreated/2)
-		}
-		t.Logf("dst %v encoder synced %d %v filenames and rejected %d encoded filenames on the wire%s", dstEncoder, synced, dstTypeMap[dstType], rejected, suffix)
+	suffix := ""
+	if rejected != 0 {
+		suffix = fmt.Sprintf(", and rejected %d encoded filenames received on the wire", rejected)
 	}
+	suffix2 := ""
+	if build.IsWindows {
+		suffix2 = fmt.Sprintf(", and Windows couldn't save %d decoded filenames", dstCreated/2)
+	}
+	t.Logf("dst %v encoder synced %d files (%d regular and %d %v filenames)%v%v",
+		dstEncoder, got, synced, synced, dstTypeMap[dstType], rejected, suffix, suffix2)
+
 	cleanup([]string{srcDir, dstDir})
 }
 

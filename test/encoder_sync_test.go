@@ -94,7 +94,7 @@ var testResultMatrix = map[fs.EncoderType]map[fs.EncoderType]map[srcType]dstType
 
 var (
 	// filesToSync must be at least 4 and a multiple of 2 to run all tests.
-	filesToSync  = 100
+	filesToSync  = 128
 	testNumber   = 0
 	skippedTests = 0
 	// Exclude EncoderTypeUnset

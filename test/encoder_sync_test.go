@@ -237,7 +237,7 @@ func testEncoderSyncOneSideToOther(t *testing.T, srcEncoder, dstEncoder fs.Encod
 
 	if got != want {
 		// Skip cleaning up, and progress to the next subtest.
-		t.Fatalf("FAIL: dst %v encoder: got %d files (%d regular and %v filenames), wanted %d files",
+		t.Fatalf("FAIL: dst %v encoder: got %d files (%d regular and %d %v filenames), wanted %d files",
 			dstEncoder, got, synced, synced, dstTypeMap[dstType], want)
 	}
 

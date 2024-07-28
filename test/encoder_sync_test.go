@@ -231,16 +231,16 @@ func testEncoderSyncOneSideToOther(t *testing.T, srcEncoder, dstEncoder fs.Encod
 	// Check that the destination folder now contains the same files as the source folder.
 	walkResults := compareTreesByType(t, srcDir, dstDir, dstType)
 	got := walkResults.found
+	// The number of encoded/decoded filenames is only half of all filenames synced.
+	synced := got / 2
 	want := wanted(dstType, created, 0)
 
 	if got != want {
 		// Skip cleaning up, and progress to the next subtest.
-		t.Fatalf("FAIL: dst %v encoder got %d %v filenames, wanted %d filenames",
-			dstEncoder, got, dstTypeMap[dstType], want)
+		t.Fatalf("FAIL: dst %v encoder: got %d files (%d regular and %v filenames), wanted %d files",
+			dstEncoder, got, synced, synced, dstTypeMap[dstType], want)
 	}
 
-	// The number of encoded/decoded filenames is only half of all filenames synced.
-	synced := got / 2
 	rejected := created - want
 	suffix := ""
 	if rejected != 0 {
@@ -286,16 +286,16 @@ func testEncoderSyncMergeTwoDevices(t *testing.T, srcEncoder, dstEncoder fs.Enco
 	walkResults := compareTreesByType(t, srcDir, dstDir, dstType)
 
 	got := walkResults.found
+	// The number of encoded/decoded filenames is only half of all files synced.
+	synced := got / 2
 	want := wanted(dstType, srcCreated, dstCreated)
 
 	if got != want {
 		// Skip cleaning up, and progress to the next subtest.
-		t.Fatalf("FAIL: dst %v encoder got %d %v filenames, wanted %d filenames",
-			dstEncoder, got, dstTypeMap[dstType], want)
+		t.Fatalf("FAIL: dst %v encoder: got %d files (%d regular and %d %v filenames), wanted %d files",
+			dstEncoder, got, synced, synced, dstTypeMap[dstType], want)
 	}
 
-	// The number of encoded/decoded filenames is only half of all files synced.
-	synced := got / 2
 	rejected := srcCreated + dstCreated - want
 	suffix := ""
 	if rejected != 0 {

@@ -34,36 +34,12 @@ const (
 	alnum              = "0123456789abcdefghijklmnopqrstuvwxyz"
 )
 
-type srcType int
-
-const (
-	// Generate pre-encoded filenames on the src encoder.
-	srcTypeDecoded srcType = iota
-	// Generate encoded filenames on the src encoder.
-	srcTypeEncoded
-)
-
 var (
 	srcTypes   = []srcType{srcTypeDecoded, srcTypeEncoded}
 	srcTypeMap = map[srcType]string{
 		srcTypeDecoded: "decoded",
 		srcTypeEncoded: "encoded",
 	}
-)
-
-type dstType int
-
-const (
-	// The dst encoder will save pre-encoded filenames.
-	dstTypeDecoded dstType = iota
-	// The dst encoder will save encoded filenames.
-	dstTypeEncoded
-	// The dst encoder will save encoded filenames, but reject encode filenames
-	// on the wire.
-	dstTypeRejectEncoded
-	// dstTypeSkipped indicates a skipped test as FAT filesystems cannot save
-	// pre-encoded filenames.
-	dstTypeSkipped
 )
 
 var dstTypeMap = map[dstType]string{

@@ -216,7 +216,7 @@ func testEncoderSyncOneSideToOther(t *testing.T, srcEncoder, dstEncoder fs.Encod
 	prefix := fmt.Sprintf("%02d-src-fold", testNumber)
 	srcDir := getTempDir(t, prefix)
 	srcPrefixes := srcPrefixes(srcType)
-	created := generateTreeWithPrefixes(t, srcDir, filesToSync, srcPrefixes)
+	created := generateTreeWithPrefixes(t, srcDir, filesToSync, srcPrefixes, "s")
 
 	// Create an empty destination folder to hold the synced data.
 	prefix = fmt.Sprintf("%02d-dst-fold", testNumber)
@@ -268,13 +268,13 @@ func testEncoderSyncMergeTwoDevices(t *testing.T, srcEncoder, dstEncoder fs.Enco
 	prefix := fmt.Sprintf("%02d-src-fold", testNumber)
 	srcDir := getTempDir(t, prefix)
 	srcPrefixes := srcPrefixes(srcType)
-	srcCreated := generateTreeWithPrefixes(t, srcDir, filesPerPeer, srcPrefixes)
+	srcCreated := generateTreeWithPrefixes(t, srcDir, filesPerPeer, srcPrefixes, "s")
 
 	// Create an empty destination folder to hold the synced data.
 	prefix = fmt.Sprintf("%02d-dst-fold", testNumber)
 	dstDir := getTempDir(t, prefix)
 	dstPrefixes := dstPrefixes(dstType)
-	dstCreated := generateTreeWithPrefixes(t, dstDir, filesPerPeer, dstPrefixes)
+	dstCreated := generateTreeWithPrefixes(t, dstDir, filesPerPeer, dstPrefixes, "d")
 
 	// Spin up two instances to sync the data.
 	err := testEncoderSyncTwoDevicesFolders(ctx, t, srcDir, dstDir, srcEncoder, dstEncoder)
@@ -443,28 +443,27 @@ func testEncoderSyncTwoDevicesFolders(ctx context.Context, t *testing.T, srcDir,
 
 // srcPrefixes returns a string of filename prefix characters for the specified
 // srcType.
-func srcPrefixes(srcType srcType) []string {
+func srcPrefixes(srcType srcType) string {
 	switch srcType {
 	case srcTypeDecoded:
-		return []string{fatDecodes(), "s"}
+		return fatDecodes()
 	case srcTypeEncoded:
-		return []string{fatEncodes(), "s"}
+		return fatEncodes()
 	}
-	panic("bug: unknown srcType")
+	panic(fmt.Sprintf("bug: unexpected srcType %v", srcType))
 }
 
 // dstPrefixes returns a string of filename prefix characters for the specified
 // dstType.
-func dstPrefixes(dstType dstType) []string {
+func dstPrefixes(dstType dstType) string {
 	switch dstType {
 	case dstTypeDecoded:
-		return []string{fatDecodes(), "d"}
+		return fatDecodes()
 	case dstTypeEncoded, dstTypeRejectEncoded:
-		return []string{fatEncodes(), "d"}
+		return fatEncodes()
 	case dstTypeSkipped:
-		panic("dstTypeSkipped is not valid in this context")
 	}
-	panic("bug: unknown dstType")
+	panic(fmt.Sprintf("bug: unexpected dstType %v", dstType))
 }
 
 // fatDecodes returns a string where 50% of the characters are encodable
@@ -516,15 +515,15 @@ func wanted(dstType dstType, srcCreated, dstCreated int) int {
 	case dstTypeDecoded, dstTypeEncoded:
 		want = srcCreated + dstCreated
 	case dstTypeRejectEncoded:
-		// The encoded filenames generated on the src None encoder instance will be
-		// rejected by the dst Fat encoder, so we cut srcCreated in half, as only
-		// half the filenames it generated were encoded.
+		// The encoded filenames generated on the src None encoder instance will
+		// be rejected by the dst Fat encoder, so we cut srcCreated in half, as
+		// only half the filenames it generated were encoded.
 		want = (srcCreated / 2) + dstCreated
 		// On Windows, the dst Fat encoder will send decoded filenames over the
 		// wire, but the src None encoder will reject them as its underlying
-		// FAT filesystem rejects decoded filenames, so we have to subtract those
-		// (expected) write failures. Again, we cut the result in half, as only half
-		// the filenames generated were encoded.
+		// FAT filesystem rejects decoded filenames, so we have to subtract
+		// those (expected) write failures. Again, we cut the result in half,
+		// as only half the filenames generated were encoded.
 		if build.IsWindows {
 			want -= dstCreated / 2
 		}

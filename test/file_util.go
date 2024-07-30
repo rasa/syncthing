@@ -35,28 +35,24 @@ type walkResults struct {
 func generateTree(t *testing.T, n int) string {
 	t.Helper()
 	dir := t.TempDir()
-	_ = generateTreeWithPrefixes(t, dir, n, []string{})
+	_ = generateTreeWithPrefixes(t, dir, n, "", "")
 
 	return dir
 }
 
 // generateTreeWithPrefixes generates n files with random data in directory dir
 // and returns the number of files created in the directory. prefixes is a
-// string array of 0 to 2 elements. If prefixes[0] is not empty, for each file
-// created, the filename will be prefixed with next prefix character in
-// prefixes[0]. Once all prefix characters have been used, they will be reused.
-// So if n an even number, and prefixes[0] contains `_1_2_3_4`, then 50% of
-// the files created will begin with `_`, and 12.5% of the files will begin
-// with `1`. prefixes[1] contains a common prefix for all filenames, so if
-// prefixes[0] is `_1_2` and prefixes[1] is `s`, the first file will be prefixed
-// with 's_' and the second with 's1'.
-func generateTreeWithPrefixes(t *testing.T, dir string, n int, prefixes []string) int {
+// string array of 0 to 2 elements. If chars is not empty, for each file
+// created, the filename will be prefixed with next character in chars. Once all
+// characters have been used, they will be reused. So if n an even number, and
+// chars contains `_1_2`, then 50% of the files created will begin with `_`,
+// and 25% of the files will begin with `1`. prefix contains a common prefix
+// for all filenames, so if chars is `_1_2` and prefix is `s`, the first
+// filename will be prefixed with 's_' and the second with 's1', etc.
+func generateTreeWithPrefixes(t *testing.T, dir string, n int, chars string, prefix string) int {
 	t.Helper()
 
-	var runes []rune
-	if len(prefixes) > 0 {
-		runes = []rune(prefixes[0])
-	}
+	var runes = []rune(chars)
 	created := 0
 	for i := 0; i < n; i++ {
 		// Generate a random string. The first character is the directory
@@ -65,13 +61,11 @@ func generateTreeWithPrefixes(t *testing.T, dir string, n int, prefixes []string
 		sub := rnd[:1]
 		file := rnd[1:]
 		if len(runes) > 0 {
-			// We add underscores so we can easily ignore them on a Windows peer. It
+			// We add underscores so we can easily ignore them via .stignore. It
 			// also makes the encoded characters stand out in certain fonts.
 			file = "_" + string(runes[i%len(runes)]) + "_" + file
 		}
-		if len(prefixes) >= 2 {
-			file = prefixes[1] + file
-		}
+		file = prefix + file
 		size := 512<<10 + rand.Intn(1024)<<10 // between 512 KiB and 1.5 MiB
 		err := os.MkdirAll(filepath.Join(dir, sub), 0o700)
 		if err != nil {

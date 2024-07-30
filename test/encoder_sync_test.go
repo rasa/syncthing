@@ -113,6 +113,9 @@ var (
 func TestEncoderSync(tttt *testing.T) {
 	tttt.Parallel()
 
+	dl, _ := tttt.Deadline()
+	maxSecondsPerTest = int(dl.Sub(time.Now()).Seconds()) / totalTests
+
 	if os.Getenv("STTRACE") != "" {
 		logger.DefaultLogger.SetFlags(logger.DebugFlags)
 	}

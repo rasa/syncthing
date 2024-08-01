@@ -1,4 +1,4 @@
-<configuration version="52">
+<configuration version="61">
     <options>
         <listenAddress>tcp://:23000</listenAddress>
         <allowDelete>false</allowDelete>
@@ -81,6 +81,7 @@
             <copyRangeMethod>standard</copyRangeMethod>
             <caseSensitiveFS>false</caseSensitiveFS>
             <junctionsAsDirs>false</junctionsAsDirs>
+            <reservedFilenames>true</reservedFilenames>
         </folder>
         <device id="" compression="metadata" introducer="false" skipIntroductionRemovals="false" introducedBy="">
             <address>dynamic</address>

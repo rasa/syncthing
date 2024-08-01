@@ -280,6 +280,9 @@ func (s *Service) reportData(ctx context.Context, urVersion int, preview bool) (
 			if cfg.SyncOwnership {
 				report.FolderUsesV3.SyncOwnership++
 			}
+			if cfg.ReservedFilenames {
+				report.FolderUsesV3.ReservedFilenames++
+			}
 		}
 		slices.Sort(report.FolderUsesV3.FsWatcherDelays)
 

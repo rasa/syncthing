@@ -52,12 +52,33 @@ const windowsDisallowedCharacters = (`<>:"|?*` +
 	"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f" +
 	"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f")
 
-func WindowsInvalidFilename(name string) error {
+// WindowsInvalidFilename returns an error if name is invalid for the specified
+// encoder. Uses lexical analysis only.
+func WindowsInvalidFilename(name string, allowReservedFilenames bool) error {
+	err := windowsInvalidFilenameChars(name)
+	if err != nil {
+		return err
+	}
+	if allowReservedFilenames {
+		return nil
+	}
+	return windowsReservedFilename(name)
+}
+
+// windowsInvalidFilenameChars returns an error if name contains characters that are
+// reserved on Windows. Uses lexical analysis only.
+func windowsInvalidFilenameChars(name string) error {
 	// The path must not contain any disallowed characters.
 	if idx := strings.IndexAny(name, windowsDisallowedCharacters); idx != -1 {
 		return fmt.Errorf("%w: %q", errInvalidFilenameWindowsReservedChar, name[idx:idx+1])
 	}
+	return nil
+}
 
+// windowsReservedFilename returns an error if name is reserved on Windows,
+// such as CON, or NUL.txt, or if it ends in a period or space. Uses lexical
+// analysis only.
+func windowsReservedFilename(name string) error {
 	// None of the path components should end in space or period, or be a
 	// reserved name.
 	for len(name) > 0 {
@@ -131,7 +152,7 @@ func windowsReservedNamePart(part string) string {
 	}
 
 	// Check length to skip allocating ToUpper.
-	if len(part) != 3 && len(part) != 4 {
+	if len(part) < 3 || len(part) > 7 || len(part) == 5 {
 		return ""
 	}
 
@@ -143,7 +164,9 @@ func windowsReservedNamePart(part string) string {
 		"COM0", "COM1", "COM2", "COM3", "COM4",
 		"COM5", "COM6", "COM7", "COM8", "COM9",
 		"LPT0", "LPT1", "LPT2", "LPT3", "LPT4",
-		"LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		"LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+		// See https://learn.microsoft.com/en-us/windows/console/console-handles
+		"CONIN$", "CONOUT$":
 		return part
 	}
 	return ""

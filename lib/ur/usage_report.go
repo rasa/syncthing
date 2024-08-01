@@ -282,6 +282,9 @@ func (s *Service) reportData(ctx context.Context, urVersion int, preview bool) (
 			if !cfg.BlockIndexing {
 				report.FolderUsesV3.NoBlockIndexing++
 			}
+			if cfg.ReservedFilenames {
+				report.FolderUsesV3.ReservedFilenames++
+			}
 		}
 		slices.Sort(report.FolderUsesV3.FsWatcherDelays)
 

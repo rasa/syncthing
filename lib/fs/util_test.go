@@ -52,26 +52,29 @@ func TestCommonPrefix(t *testing.T) {
 
 func TestWindowsInvalidFilename(t *testing.T) {
 	cases := []struct {
-		name string
-		err  error
+		name                   string
+		err                    error
+		allowReservedFilenames bool
 	}{
-		{`asdf.txt`, nil},
-		{`nul`, errInvalidFilenameWindowsReservedName},
-		{`nul.txt`, errInvalidFilenameWindowsReservedName},
-		{`nul.jpg.txt`, errInvalidFilenameWindowsReservedName},
-		{`some.nul.jpg`, nil},
-		{`foo>bar.txt`, errInvalidFilenameWindowsReservedChar},
-		{`foo \bar.txt`, errInvalidFilenameWindowsSpacePeriod},
-		{`foo.\bar.txt`, errInvalidFilenameWindowsSpacePeriod},
-		{`foo.d\bar.txt`, nil},
-		{`foo.d\bar .txt`, nil},
-		{`foo.d\bar. txt`, nil},
+		{`asdf.txt`, nil, false},
+		{`nul`, errInvalidFilenameWindowsReservedName, false},
+		{`nul.txt`, errInvalidFilenameWindowsReservedName, false},
+		{`nul.jpg.txt`, errInvalidFilenameWindowsReservedName, false},
+		{`some.nul.jpg`, nil, false},
+		{`foo>bar.txt`, errInvalidFilenameWindowsReservedChar, false},
+		{`foo \bar.txt`, errInvalidFilenameWindowsSpacePeriod, false},
+		{`foo.\bar.txt`, errInvalidFilenameWindowsSpacePeriod, false},
+		{`foo.d\bar.txt`, nil, false},
+		{`foo.d\bar .txt`, nil, false},
+		{`foo.d\bar. txt`, nil, false},
+		{`foo \bar.txt`, nil, true},
+		{`foo.\bar.txt`, nil, true},
 	}
 
 	for _, tc := range cases {
-		err := WindowsInvalidFilename(tc.name)
+		err := WindowsInvalidFilename(tc.name, tc.allowReservedFilenames)
 		if !errors.Is(err, tc.err) {
-			t.Errorf("For %q, got %v, expected %v", tc.name, err, tc.err)
+			t.Errorf("For %q/%v, got %v, expected %v", tc.name, tc.allowReservedFilenames, err, tc.err)
 		}
 		t.Logf("%s: %v", tc.name, err)
 	}
@@ -123,7 +126,7 @@ func TestSanitizePathFuzz(t *testing.T) {
 
 func benchmarkWindowsInvalidFilename(b *testing.B, name string) {
 	for i := 0; i < b.N; i++ {
-		WindowsInvalidFilename(name)
+		WindowsInvalidFilename(name, false)
 	}
 }
 

@@ -22,7 +22,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/lib/pq v1.10.9
 	github.com/maruel/panicparse/v2 v2.3.1
-	github.com/maxbrunsfeld/counterfeiter/v6 v6.8.1
+	github.com/maxbrunsfeld/counterfeiter/v6 v6.9.0
 	github.com/maxmind/geoipupdate/v6 v6.1.0
 	github.com/miscreant/miscreant.go v0.0.0-20200214223636-26d376326b75
 	github.com/oschwald/geoip2-golang v1.11.0
@@ -39,12 +39,12 @@ require (
 	github.com/vitrun/qart v0.0.0-20160531060029-bf64b92db6b0
 	github.com/willabides/kongplete v0.4.0
 	go.uber.org/automaxprocs v1.5.3
-	golang.org/x/crypto v0.26.0
-	golang.org/x/net v0.28.0
-	golang.org/x/sys v0.24.0
-	golang.org/x/text v0.17.0
+	golang.org/x/crypto v0.27.0
+	golang.org/x/net v0.29.0
+	golang.org/x/sys v0.25.0
+	golang.org/x/text v0.18.0
 	golang.org/x/time v0.6.0
-	golang.org/x/tools v0.24.0
+	golang.org/x/tools v0.25.0
 	google.golang.org/protobuf v1.34.2
 )
 
@@ -84,7 +84,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
-	golang.org/x/mod v0.20.0 // indirect
+	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

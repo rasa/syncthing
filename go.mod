@@ -45,7 +45,7 @@ require (
 	golang.org/x/text v0.20.0
 	golang.org/x/time v0.8.0
 	golang.org/x/tools v0.27.0
-	google.golang.org/protobuf v1.35.2
+	google.golang.org/protobuf v1.36.0
 	sigs.k8s.io/yaml v1.4.0
 )
 

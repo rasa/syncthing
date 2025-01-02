@@ -124,7 +124,7 @@ jobs:
         run: |
           go install calmh.dev/go-test-json-to-loki@latest
 
-      - name: Test
+      - name: Test (unit)
         run: |
           go version
           go run build.go test | go-test-json-to-loki
@@ -135,6 +135,17 @@ jobs:
           LOKI_PASSWORD: ${{ secrets.LOKI_PASSWORD }}
           LOKI_LABELS: "go=${{ matrix.go }},runner=${{ matrix.runner }},repo=${{ github.repository }},ref=${{ github.ref }}"
           CGO_ENABLED: "1"
+
+      - name: Test (integration)
+        run: |
+          cd test
+          go test | go-test-json-to-loki
+        env:
+          GOFLAGS: "-json"
+          LOKI_URL: ${{ secrets.LOKI_URL }}
+          LOKI_USER: ${{ secrets.LOKI_USER }}
+          LOKI_PASSWORD: ${{ secrets.LOKI_PASSWORD }}
+          LOKI_LABELS: "go=${{ matrix.go }},runner=${{ matrix.runner }},repo=${{ github.repository }},ref=${{ github.ref }}"
 
   #
   # The basic checks job is a virtual one that depends on the matrix tests,

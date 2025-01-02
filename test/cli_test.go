@@ -7,11 +7,14 @@
 package integration
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/syncthing/syncthing/lib/rc"
@@ -20,6 +23,43 @@ import (
 const indexDbDir = "index-v0.14.0.db"
 
 var generatedFiles = []string{"config.xml", "cert.pem", "key.pem"}
+
+
+// From https://github.com/syncthing/syncthing/blob/4e56dbd8/lib/build/build.go#L39
+var allowedVersionExp = regexp.MustCompile(`^v\d+\.\d+\.\d+(-[a-z0-9]+)*(\.\d+)*(\+\d+-g[0-9a-f]+|\+[0-9a-z]+)?(-[^\s]+)?$`)
+
+func TestCLIVersion(t *testing.T) {
+	t.Parallel()
+
+	syncthingDir := t.TempDir()
+	userHomeDir := t.TempDir()
+
+	cmd := exec.Command(syncthingBinary, "--no-browser", "--no-default-folder", "--home", syncthingDir, "--version")
+	cmd.Env = basicEnv(userHomeDir)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stdout
+	
+	err := cmd.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output := stdout.String()
+	parts := strings.Split(output, " ")
+	if len(parts) < 2 {
+		t.Errorf("Expected a space in --version output, got %q", output)
+		return
+	}
+	Version := parts[1]
+	if Version != "unknown-dev" {
+		// If not a generic dev build, version string should come from git describe
+		if !allowedVersionExp.MatchString(Version) {
+			t.Logf("syncthing --version returned %q", output)
+			t.Fatalf("Invalid version string %q;\n\tdoes not match regexp %v", Version, allowedVersionExp)
+		}
+	}
+}
 
 func TestCLIReset(t *testing.T) {
 	t.Parallel()

@@ -7,6 +7,7 @@
 package integration
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/syncthing/syncthing/lib/rand"
-	"github.com/syncthing/syncthing/lib/sha256"
 )
 
 // These will not match, so we ignore them.

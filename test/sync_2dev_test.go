@@ -16,7 +16,6 @@ import (
 
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/events"
-	"github.com/syncthing/syncthing/lib/fs"
 	"github.com/syncthing/syncthing/lib/rand"
 	"github.com/syncthing/syncthing/lib/rc"
 )
@@ -108,7 +107,7 @@ func testSyncTwoDevicesFolders(ctx context.Context, t *testing.T, srcDir, dstDir
 	if err := srcAPI.Post("/rest/config/folders", &config.FolderConfiguration{
 		ID:             folderID,
 		Path:           srcDir,
-		FilesystemType: fs.FilesystemTypeBasic,
+		FilesystemType: config.FilesystemTypeBasic,
 		Type:           config.FolderTypeSendReceive,
 		Devices: []config.FolderDeviceConfiguration{
 			{DeviceID: src.deviceID},
@@ -120,7 +119,7 @@ func testSyncTwoDevicesFolders(ctx context.Context, t *testing.T, srcDir, dstDir
 	if err := dstAPI.Post("/rest/config/folders", &config.FolderConfiguration{
 		ID:             folderID,
 		Path:           dstDir,
-		FilesystemType: fs.FilesystemTypeBasic,
+		FilesystemType: config.FilesystemTypeBasic,
 		Type:           config.FolderTypeSendReceive,
 		Devices: []config.FolderDeviceConfiguration{
 			{DeviceID: src.deviceID},

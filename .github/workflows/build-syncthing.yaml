@@ -91,7 +91,7 @@ jobs:
       - name: Test (integration)
         run: |
           cd test
-          go test | go-test-json-to-loki
+          go test -v | go-test-json-to-loki
         env:
           GOFLAGS: "-json"
           LOKI_URL: ${{ secrets.LOKI_URL }}

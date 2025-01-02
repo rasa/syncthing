@@ -9,16 +9,19 @@ package fs
 import (
 	"os"
 
-	"golang.org/x/text/encoding"
-
 	"github.com/syncthing/syncthing/lib/encoding/fat"
+	"golang.org/x/text/encoding"
 )
 
 // The "FAT" encoder encodes characters reserved on vFAT/exFAT/NTFS/reFS
 // filesystems. It does not encode filenames ending with a space or period,
 // which are accepted on Android, but rejected on Windows. It also does not
 // encode Windows' reserved filenames, such as `NUL` or `CON.txt`.
-// These can be addressed later, with a "Windows" encoder, if desired.
+// These reserved filenames are discussed in
+// https://github.com/syncthing/syncthing/issues/9623
+// and a proposed solution using the config setting allowReservedFilenames is in
+// https://github.com/rasa/syncthing/tree/feature/9623-allow-reserved .
+// We could also implement this a "Windows" encoder, if desired.
 type fatEncoderFS struct {
 	encoderFS
 	decoder        *encoding.Decoder

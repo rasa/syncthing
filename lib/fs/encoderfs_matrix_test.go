@@ -26,14 +26,13 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/encoding/fat"
 	"github.com/syncthing/syncthing/lib/encoding/fat/consts"
 	"github.com/syncthing/syncthing/lib/fsutil"
 	"github.com/syncthing/syncthing/lib/osutil/wsl"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type encoderTest struct {
@@ -111,8 +110,8 @@ func TestEncoderMatrix(tttt *testing.T) {
 	_, ok := unwrapFilesystem(testFs, filesystemWrapperTypeEncoder)
 	if ok {
 		// TestMain runs thru all the tests twice. Once using a plain BasicFilesytem,
-		// and again using running an fatEncoderFS. So we can skip this test in
-		// TestMain's pass 2 as it would be redundant.
+		// and again using an fatEncoderFS. So we can skip this test in
+		// TestMain's 2nd pass as it's redundant.
 		tttt.Skipf("Skipping as TestMain has already run this test in pass 1")
 		return
 	}
@@ -181,7 +180,7 @@ func TestEncoderMatrix(tttt *testing.T) {
 									tt.Fatal(err)
 								}
 							}
-							// ok checks done in testEncoderCheckForNewTypes()
+							// ok checks are done in testEncoderCheckForNewTypes()
 							encoderTests := encoderTestMatrix[volumeType]
 							encoderTest := encoderTests[encoderType]
 							opts := []Option{EncoderTypeOption(encoderType)}
@@ -495,7 +494,7 @@ func runEncoderTests(t *testing.T, fs Filesystem, encTest encoderTest) {
 
 		return testEncoderStat(t, fs, want)
 	}
-	t.Run("Remove", func(t *testing.T) { runEncoderTest(t, fs, encTest, testFunc) })
+	t.Run("Stat", func(t *testing.T) { runEncoderTest(t, fs, encTest, testFunc) })
 
 	// Stat-Dir
 	testFunc = func(name string) error {

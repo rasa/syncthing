@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/syncthing/syncthing/lib/rc"
 )
@@ -60,36 +61,42 @@ func TestCLIVersion(t *testing.T) {
 func TestCLIReset(t *testing.T) {
 	instance := startInstance(t)
 
-	// api2 := rc.NewAPI(instance.apiAddress, instance.apiKey)
-	// var dst2 map[string]string
-	// err2 := api2.Post("/rest/system/ping", nil, &dst2)
-	// if err2 != nil {
-	// 	t.Fatal(err2)
-	// }
-	// fmt.Printf("dst2[ping]=%+v", dst2["ping"])
+	// This extra work isn't required when testing locally, but on github, we're seeing
+	// WARNING: Resetting database: remove C:\Users\RUNNER~1\AppData\Local\Temp\TestCLIReset3617350472\001\index-v0.14.0.db\000002.log: 
+	// The process cannot access the file because it is being used by another process.
 
-	// Shutdown instance after it created its files in syncthing's home directory.
 	api := rc.NewAPI(instance.apiAddress, instance.apiKey)
-	err := api.Post("/rest/system/shutdown", nil, nil)
+	t.Log("Calling /rest/system/ping")
+	var dst map[string]string
+	err := api.Post("/rest/system/ping", nil, &dst)
 	if err != nil {
 		t.Error(err)
 	}
 
-	// This isn't required when testing locally, but on github, we're seeing
-	// WARNING: Resetting database: remove C:\Users\RUNNER~1\AppData\Local\Temp\TestCLIReset3617350472\001\index-v0.14.0.db\000002.log: 
-	// The process cannot access the file because it is being used by another process.
-	for {
-		api = rc.NewAPI(instance.apiAddress, instance.apiKey)
-		var dst map[string]string
+	if dst["ping"] != "pong" {
+		t.Errorf("Expecting 'pong', got %q", dst["ping"])
+	}
+	t.Log("Received pong")
+
+	// Shutdown instance after it created its files in syncthing's home directory.
+	err = api.Post("/rest/system/shutdown", nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tries := 5
+	for tries > 0 {
+		tries--
+		time.Sleep(1 * time.Second)
+		t.Log("Calling /rest/system/ping")
 		err = api.Post("/rest/system/ping", nil, &dst)
 		if err != nil {
-			t.Log(err)
 			break
 		}
-		if dst["ping"] == "pong" {
-			continue
+		if dst["ping"] != "pong" {
+			t.Errorf("Expecting 'pong', got %q", dst["ping"])
 		}
-		t.Logf("Expecting 'pong', got %q", dst["ping"])
+		t.Log("Received pong")	
 	}
 
 	dbDir := filepath.Join(instance.syncthingDir, indexDbDir)

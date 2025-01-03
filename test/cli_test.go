@@ -55,8 +55,7 @@ func TestCLIVersion(t *testing.T) {
 	if Version != "unknown-dev" {
 		// If not a generic dev build, version string should come from git describe
 		if !allowedVersionExp.MatchString(Version) {
-			t.Logf("syncthing --version returned %q", output)
-			t.Fatalf("Invalid version string %q;\n\tdoes not match regexp %v", Version, allowedVersionExp)
+			t.Fatalf("Invalid version string %q;\n\tdoes not match regexp %v\nsyncthing --version returned %q", Version, allowedVersionExp, output)
 		}
 	}
 }

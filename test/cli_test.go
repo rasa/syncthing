@@ -24,12 +24,13 @@ const indexDbDir = "index-v0.14.0.db"
 
 var generatedFiles = []string{"config.xml", "cert.pem", "key.pem"}
 
-
 // From https://github.com/syncthing/syncthing/blob/4e56dbd8/lib/build/build.go#L39
 var allowedVersionExp = regexp.MustCompile(`^v\d+\.\d+\.\d+(-[a-z0-9]+)*(\.\d+)*(\+\d+-g[0-9a-f]+|\+[0-9a-z]+)?(-[^\s]+)?$`)
 
 func TestCLIVersion(t *testing.T) {
-	// not run in parallel as if this test fails, all tests will fail.
+	// Not parellel or we'll get:
+	// The process cannot access the file because it is being used by another process.
+	// Also, if this test fails, all tests will fail.
 
 	cmd := exec.Command(syncthingBinary, "--version")
 	var stdout bytes.Buffer
@@ -57,8 +58,6 @@ func TestCLIVersion(t *testing.T) {
 }
 
 func TestCLIReset(t *testing.T) {
-	t.Parallel()
-
 	instance := startInstance(t)
 
 	// Shutdown instance after it created its files in syncthing's home directory.
@@ -90,8 +89,6 @@ func TestCLIReset(t *testing.T) {
 }
 
 func TestCLIGenerate(t *testing.T) {
-	t.Parallel()
-
 	syncthingDir := t.TempDir()
 	userHomeDir := t.TempDir()
 	generateDir := t.TempDir()
@@ -119,8 +116,6 @@ func TestCLIGenerate(t *testing.T) {
 }
 
 func TestCLIFirstStartup(t *testing.T) {
-	t.Parallel()
-
 	// Startup instance.
 	instance := startInstance(t)
 

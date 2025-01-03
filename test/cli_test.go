@@ -36,7 +36,7 @@ func TestCLIVersion(t *testing.T) {
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stdout
-	
+
 	err := cmd.Run()
 	if err != nil {
 		t.Logf("syncthing --version returned: %v", err)

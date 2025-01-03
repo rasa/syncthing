@@ -80,6 +80,11 @@ jobs:
       - name: Test (unit)
         run: |
           go version
+          git describe --always --dirty --abbrev=8
+          git describe --always --abbrev=0
+          git branch -a --contains
+          
+          go run build.go version
           go run build.go test | go-test-json-to-loki
         env:
           GOFLAGS: "-json"

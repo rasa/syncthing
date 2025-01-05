@@ -1,71 +1,112 @@
-// Copyright (C) 2014 The Syncthing Authors.
+// Copyright (C) 2024 The Syncthing Authors.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at https://mozilla.org/MPL/2.0/.
 
-//go:build integration
-// +build integration
-
 package integration
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"slices"
+	"sort"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/syncthing/syncthing/lib/rc"
 )
 
-func TestCLIReset(t *testing.T) {
-	dirs := []string{"h1/index-v0.14.0.db"}
+const indexDbDir = "index-v0.14.0.db"
 
-	// Create directories that reset will remove
+var generatedFiles = []string{"config.xml", "cert.pem", "key.pem"}
 
-	for _, dir := range dirs {
-		err := os.Mkdir(dir, 0o755)
-		if err != nil && !os.IsExist(err) {
-			t.Fatal(err)
-		}
-	}
+// From https://github.com/syncthing/syncthing/blob/4e56dbd8/lib/build/build.go#L39
+var allowedVersionExp = regexp.MustCompile(`^v\d+\.\d+\.\d+(-[a-z0-9]+)*(\.\d+)*(\+\d+-g[0-9a-f]+|\+[0-9a-z]+)?(-[^\s]+)?$`)
 
-	// Run reset to clean up
+func TestCLIVersion(t *testing.T) {
+	// Not parellel or we'll get:
+	// The process cannot access the file because it is being used by another process.
+	// Also, if this test fails, all tests will fail.
 
-	cmd := exec.Command("../bin/syncthing", "--no-browser", "--home", "h1", "--reset-database")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
+	cmd := exec.Command(syncthingBinary, "--version")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stdout
+
 	err := cmd.Run()
 	if err != nil {
-		t.Fatal(err)
+		t.Logf("syncthing --version returned: %v", err)
 	}
 
-	// Verify that they're gone
-
-	for _, dir := range dirs {
-		_, err := os.Stat(dir)
-		if err == nil {
-			t.Errorf("%s still exists", dir)
+	output := stdout.String()
+	parts := strings.Split(output, " ")
+	if len(parts) < 2 {
+		t.Errorf("Expected a space in --version output, got %q", output)
+		return
+	}
+	Version := parts[1]
+	if Version != "unknown-dev" {
+		// If not a generic dev build, version string should come from git describe
+		if !allowedVersionExp.MatchString(Version) {
+			t.Fatalf("Invalid version string %q;\n\tdoes not match regexp %v;\n\t`syncthing --version` returned %q", Version, allowedVersionExp, output)
 		}
 	}
-
-	// Clean up
-
-	dirs, err = filepath.Glob("*.syncthing-reset-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	removeAll(dirs...)
 }
 
-func TestCLIGenerate(t *testing.T) {
-	err := os.RemoveAll("home.out")
+func TestCLIReset(t *testing.T) {
+	instance := startInstance(t)
+
+	// This extra work isn't required when testing locally, but on github, we're seeing
+	// WARNING: Resetting database: remove C:\Users\RUNNER~1\AppData\Local\Temp\TestCLIReset3617350472\001\index-v0.14.0.db\000002.log: 
+	// The process cannot access the file because it is being used by another process.
+
+	api := rc.NewAPI(instance.apiAddress, instance.apiKey)
+	t.Log("Calling /rest/system/ping")
+	var dst map[string]string
+	err := api.Post("/rest/system/ping", nil, &dst)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if dst["ping"] != "pong" {
+		t.Errorf("Expecting 'pong', got %q", dst["ping"])
+	}
+	t.Log("Received pong")
+
+	// Shutdown instance after it created its files in syncthing's home directory.
+	err = api.Post("/rest/system/shutdown", nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tries := 5
+	for tries > 0 {
+		tries--
+		time.Sleep(1 * time.Second)
+		t.Log("Calling /rest/system/ping")
+		err = api.Post("/rest/system/ping", nil, &dst)
+		if err != nil {
+			break
+		}
+		if dst["ping"] != "pong" {
+			t.Errorf("Expecting 'pong', got %q", dst["ping"])
+		}
+		t.Log("Received pong")	
+	}
+
+	dbDir := filepath.Join(instance.syncthingDir, indexDbDir)
+	err = os.MkdirAll(dbDir, 0o700)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// --generate should create a bunch of stuff
-
-	cmd := exec.Command("../bin/syncthing", "--no-browser", "--generate", "home.out")
+	cmd := exec.Command(syncthingBinary, "--no-browser", "--no-default-folder", "--home", instance.syncthingDir, "--reset-database")
+	cmd.Env = basicEnv(instance.userHomeDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
 	err = cmd.Run()
@@ -73,72 +114,60 @@ func TestCLIGenerate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify that the files that should have been created have been
+	_, err = os.Stat(dbDir)
+	if err == nil {
+		t.Errorf("the directory %q still exists, expected it to have been deleted", dbDir)
+	}
+}
 
-	for _, f := range []string{"home.out/config.xml", "home.out/cert.pem", "home.out/key.pem"} {
-		_, err := os.Stat(f)
-		if err != nil {
-			t.Errorf("%s is not correctly generated", f)
+func TestCLIGenerate(t *testing.T) {
+	syncthingDir := t.TempDir()
+	userHomeDir := t.TempDir()
+	generateDir := t.TempDir()
+
+	cmd := exec.Command(syncthingBinary, "--no-browser", "--no-default-folder", "--home", syncthingDir, "--generate", generateDir)
+	cmd.Env = basicEnv(userHomeDir)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+	err := cmd.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	found := walk(t, generateDir)
+	// Sort list so binary search works.
+	sort.Strings(found)
+
+	// Verify that the files that should have been created have been.
+	for _, want := range generatedFiles {
+		_, ok := slices.BinarySearch(found, want)
+		if !ok {
+			t.Errorf("expected to find %q in %q", want, generateDir)
 		}
 	}
 }
 
 func TestCLIFirstStartup(t *testing.T) {
-	err := os.RemoveAll("home.out")
+	// Startup instance.
+	instance := startInstance(t)
+
+	// Shutdown instance after it created its files in syncthing's home directory.
+	api := rc.NewAPI(instance.apiAddress, instance.apiKey)
+	err := api.Post("/rest/system/shutdown", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// First startup should create config, BEP certificate, and HTTP certificate.
+	found := walk(t, instance.syncthingDir)
 
-	cmd := exec.Command("../bin/syncthing", "--no-browser", "--home", "home.out")
-	cmd.Env = append(os.Environ(), "STNORESTART=1")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
-	err = cmd.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Sort list so binary search works.
+	sort.Strings(found)
 
-	exitError := make(chan error, 1)
-	filesOk := make(chan struct{})
-	processDone := make(chan struct{})
-
-	go func() {
-		// Wait for process exit.
-		exitError <- cmd.Wait()
-		close(processDone)
-	}()
-
-	go func() {
-	again:
-		for {
-			select {
-			case <-processDone:
-				return
-			default:
-				// Verify that the files that should have been created have been
-				for _, f := range []string{"home.out/config.xml", "home.out/cert.pem", "home.out/key.pem", "home.out/https-cert.pem", "home.out/https-key.pem"} {
-					_, err := os.Stat(f)
-					if err != nil {
-						time.Sleep(500 * time.Millisecond)
-						continue again
-					}
-				}
-
-				// Make sure the process doesn't exit with an error just after creating certificates.
-				time.Sleep(time.Second)
-				filesOk <- struct{}{}
-				return
-			}
+	// Verify that the files that should have been created have been.
+	for _, want := range generatedFiles {
+		_, ok := slices.BinarySearch(found, want)
+		if !ok {
+			t.Errorf("expected to find %q in %q", want, instance.syncthingDir)
 		}
-	}()
-
-	select {
-	case e := <-exitError:
-		t.Error(e)
-	case <-filesOk:
-		cmd.Process.Kill()
-		return
 	}
 }

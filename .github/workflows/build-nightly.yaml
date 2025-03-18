@@ -1,4 +1,4 @@
-name: build-nightly
+name: Build Syncthing (Nightly)
 
 on:
   schedule:

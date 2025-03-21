@@ -15,5 +15,5 @@ permissions:
 jobs:
   build-syncthing:
     uses: ./.github/workflows/build-syncthing.yaml
-    if: contains(fromJSON('["syncthing", "calmh", "rasa"]'), repository_owner)
+    if: contains(fromJSON('["syncthing", "calmh", "rasa"]'), github.repository_owner)
     secrets: inherit

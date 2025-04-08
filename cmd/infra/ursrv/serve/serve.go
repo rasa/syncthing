@@ -26,9 +26,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/puzpuzpuz/xsync/v3"
+	"github.com/syncthing/syncthing/internal/blob/s3"
 	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/geoip"
-	"github.com/syncthing/syncthing/lib/s3"
 	"github.com/syncthing/syncthing/lib/ur/contract"
 )
 

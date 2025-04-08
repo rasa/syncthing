@@ -24,11 +24,11 @@ import (
 	"github.com/puzpuzpuz/xsync/v3"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/syncthing/syncthing/internal/blob/s3"
 	"github.com/syncthing/syncthing/internal/gen/discosrv"
 	"github.com/syncthing/syncthing/internal/protoutil"
 	"github.com/syncthing/syncthing/lib/protocol"
 	"github.com/syncthing/syncthing/lib/rand"
-	"github.com/syncthing/syncthing/lib/s3"
 )
 
 type clock interface {

@@ -21,11 +21,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/thejerf/suture/v4"
 
+	"github.com/syncthing/syncthing/internal/blob/s3"
 	_ "github.com/syncthing/syncthing/lib/automaxprocs"
 	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/protocol"
 	"github.com/syncthing/syncthing/lib/rand"
-	"github.com/syncthing/syncthing/lib/s3"
 	"github.com/syncthing/syncthing/lib/tlsutil"
 )
 

@@ -44,7 +44,7 @@ endif
 
 DIRS = angular.tmp \
 	angular-translate.tmp \
-	angular-translate-loader-static-files.tmp \
+	angular-translate-loader.tmp \
 	angularUtils.tmp \
 	bootstrap.tmp \
 	fancytree.tmp \
@@ -72,7 +72,7 @@ define clone
 		git checkout -q $3
 endef
 
-angular.tmp: setup ## upgrade angular
+angular.tmp: setup
 	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	# change git: URLs to https: as GitHub dropped support
 	sed -i 's|git://|https://|;' $@/package.json $@/npm-shrinkwrap.json $@/npm-shrinkwrap.clean.json
@@ -108,7 +108,7 @@ angular.tmp: setup ## upgrade angular
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
 
-angular-translate.tmp: setup ## upgrade angular-translate
+angular-translate.tmp: setup
 	@echo PHANTOMJS_SKIP_RECOMMENDED=$$PHANTOMJS_SKIP_RECOMMENDED
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	# change git: URLs to https: as GitHub dropped support
@@ -158,32 +158,32 @@ angular-translate.tmp: setup ## upgrade angular-translate
 	@echo ======================================================================
 	cp -pv $@/build/angular-translate.js angular
 
-angular-translate-loader-static-files.tmp: angular.tmp ## upgrade angular-translate-loader-static-files
+angular-translate-loader.tmp: angular
 	$(call clone,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_STATIC_FILES_VER))
 	cp -pv $@/angular-translate-loader-static-files.js angular
 
-angularUtils.tmp: angular.tmp ## upgrade angularUtils
+angularUtils.tmp: angular
 	$(call clone,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER)
 	cp -pv $@/src/directives/pagination/dirPagination.js angular/angular-dirPagination.js
 
-bootstrap.tmp: ## upgrade bootstrap
+bootstrap.tmp:
 	$(call clone,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
 	cp -pv $@/dist/css/bootstrap.css       bootstrap/css
 	cp -pv $@/dist/css/bootstrap-theme.css bootstrap/css
 	cp -pv $@/dist/js/bootstrap.js         bootstrap/js
 	cp -pv $@/LICENSE                      bootstrap/LICENSE
 
-fancytree.tmp: ## upgrade fancytree
+fancytree.tmp:
 	$(call clone,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
 	cp -pv $@/dist/jquery.fancytree-all-deps.js fancytree
 	cp -pv $@/dist/dist/LICENSE.txt fancytree
 
-jquery.tmp: ## upgrade jquery
+jquery.tmp:
 	$(call clone,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
 	cp -pv $@/dist/jquery.js jquery/jquery-$(JQUERY_VER).js
 	cp -pv $@/LICENSE.txt    jquery/LICENSE
 
-moment.tmp: ## upgrade moment
+moment.tmp:
 	$(call clone,$@,https://github.com/moment/moment,$(MOMENT_VER))
 	cp -pv $@/moment.js moment
 	cp -pv $@/LICENSE   moment
@@ -210,7 +210,7 @@ PHONY+=clean
 clean: ## Clean only the .tmp directories
 	find -maxdepth 1 -type d -name "*.tmp" | xargs rm -fr
 
-fmt=\033[36m%-13s\033[0m %s\n
+fmt=\033[36m%-25s\033[0m %s\n
 PHONY+=help
 help: ## Display a help screen
 	@printf '$(fmt)' 'Target' 'Description'
@@ -220,4 +220,29 @@ help: ## Display a help screen
 PHONY+=nvm
 nvm: $(NVM_DIR)/nvm.sh
 
+PHONY+=angular
+angular: angular.tmp ## upgrade angular
+
+PHONY+=angular
+angular-translate: angular-translate.tmp: ## upgrade angular-translate
+
+PHONY+=angular-translate-loader
+angular-translate-loader: angular-translate-loader: ## upgrade angular-translate-loader
+
+PHONY+=angularUtils
+angularUtils: angularUtils.tmp: ## upgrade angularUtils
+
+PHONY+=bootstrap
+bootstrap: bootstrap.tmp: ## upgrade bootstrap
+
+PHONY+=fancytree
+fancytree: fancytree.tmp: ## upgrade fancytree
+
+PHONY+=jquery
+jquery: jquery.tmp: ## upgrade jquery
+
+PHONY+=moment
+moment: moment.tmp: ## upgrade moment
+
 .PHONY: $(PHONY)
+

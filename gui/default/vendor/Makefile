@@ -12,7 +12,6 @@ FANCYTREE_VER ?= v2.38.0
 JQUERY_VER ?= 2.2.2
 MOMENT_VER ?= 2.19.4
 
-# NVM_VER ?= v0.26.1
 NVM_VER ?= v0.40.2
 NPM_VER ?= 2.15.11
 
@@ -34,8 +33,6 @@ ifeq (, $(PYTHON))
 	$(error "To install on Ubuntu 23.10+, run: make -f python2.mak install")
 endif
 
-export PHANTOMJS_SKIP_RECOMMENDED := true 
-
 DIRS = angular.tmp \
 	angular-translate.tmp \
 	angular-translate-loader-static-files.tmp \
@@ -52,12 +49,13 @@ $(NVM_DIR)/nvm.sh:
 PHONY+=nvm
 nvm: $(NVM_DIR)/nvm.sh
 
-.config_git:
-	git config --global url."https://github.com/".insteadOf git://github.com/
-	touch $@
+# GitHub doesn't support git:// URLs any more
+# .git_configured:
+# 	# git config --global url."https://github.com/".insteadOf git://github.com/
+# 	touch $@
 
-PHONY+=preflight
-preflight: .config_git $(NVM_DIR)/nvm.sh
+# PHONY+=preflight
+# preflight: nvm .git_configured
 
 # $1 dir
 # $2 url
@@ -68,78 +66,54 @@ define clone
 		git checkout -q $3
 endef
 
-angular.tmp: preflight
+angular.tmp: $(NVM_DIR)/nvm.sh
 	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
-	test -n "$(NVM_DIR)"
-	@echo PHANTOMJS_SKIP_RECOMMENDED=$$PHANTOMJS_SKIP_RECOMMENDED
-	-grep -q save-exact ~/.npmrc || echo save-exact=true >>~/.npmrc
-	# pin all package versions, remove:
+	# change:
+	#   "stringmap": "0.2.2"
+	# to:
+	#   "stringmap": "0.2.2","request": "2.51.0", "tough-cookie": "0.12.1"
+	cp -pv package.json $@
 	#   "preinstall": "node scripts/npm/check-node-modules.js --purge",
 	# which fails the build
 	cd $@ && \
-	    sed -i 's/"~/"/; s/"^/"/; /preinstall/d;' package.json
-	cp -pv package.json $@
+	    sed -i '/preinstall/d;' package.json
+	# pin all package versions
+	# change git: URLs to https: as GitHub doesn't support git: URLs any more
+	cd $@ && \
+	    sed -i 's/"~/"/; s/"^/"/; s|git://|https://|;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
 	printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc
-	-rm -f ~/.nvmrc
+	# -rm -f ~/.nvmrc
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(ANGULAR_NODE_VER)
-	-rm -f ~/.nvmrc
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm use $(ANGULAR_NODE_VER)
-	-rm -f ~/.nvmrc
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm ls
-	# Fixes: npm ERR! cb() never called!
+	# fixes: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm version
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm set progress=false
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm set spin=false
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm set loglevel=warn
+	# Try without: --no-package-lock --no-bin-links
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install --no-package-lock --no-bin-links
-	# this *OVERWRITES* the npm-shrinkwrap.json file, it doesn't APPLY it:
-	# ls -l $@/npm-shrinkwrap.json
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm shrinkwrap
-	# ls -l $@/npm-shrinkwrap.json
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm dedupe
-	# ls -l $@/npm-shrinkwrap.json
 	# installs ./node_modules/.bin/bower
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER) # --save-dev
+		npm install bower@$(BOWER_VER)
 	# version required:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER) # --save-dev
+		npm install grunt@$(GRUNT_VER)
 	# installs ./node_modules/.bin/grunt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER) # --save-dev
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm shrinkwrap
+		npm install grunt-cli@$(GRUNT_CLI_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/bower install
+	# Try without: --no-package-lock --no-bin-links
+	# Try without running npm install again
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install --no-package-lock --no-bin-links
+	# Try without: --force
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/grunt package --force
 	cd $@ && \
 		cp -pv build/angular.js          ../angular && \
 		cp -pv build/angular-sanitize.js ../angular
-
-# npm install --no-package-lock --no-bin-links
-# npm shrinkwrap
-# npm dedupe
-# npm install bower --save-dev
-# npm install grunt@0.4.2 --save-dev
-# npm install grunt-cli@0.1.13 --save-dev
-# npm shrinkwrap
-# ./node_modules/.bin/bower install
-# ./node_modules/.bin/grunt package --force
 
 angular-translate.tmp: angular.tmp
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
@@ -198,8 +172,6 @@ fancytree.tmp:
 		cp -pv dist/jquery.fancytree-all-deps.js ../fancytree && \
 		cp -pv dist/dist/LICENSE.txt ../fancytree
 
-https://github.com/syncthing/syncthing/blob/main/gui/default/vendor/fancytree/jquery.fancytree-all-deps.js
-
 jquery.tmp:
 	$(call clone,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
 	cd $@ && \
@@ -213,16 +185,16 @@ moment.tmp:
 		cp -pv LICENSE   ../moment
 
 PHONY+=all
-all: lfs download asis clean ## Run `make lfs download asis clean`
+all: checkout_lfs download checkout_asis clean ## Run `make checkout_lfs download checkout_asis clean`
 
-PHONY+=lfs
-lfs: ## Set git to checkout all text files with LF line endings (Windows only)
+PHONY+=checkout_lfs
+checkout_lfs: ## Set git to checkout all text files with LF line endings (Windows only)
 ifeq ($(OS),Windows_NT)
 	sed -i -e 's|^vendor.*|vendor/** eol=lf|' ../../../.gitattributes
 endif
 
-PHONY+=asis
-asis: ## Set git to checkout all text files "as is" (Windows only)
+PHONY+=checkout_asis
+checkout_asis: ## Set git to checkout all text files "as is" (Windows only)
 ifeq ($(OS),Windows_NT)
 	git restore ../../../.gitattributes
 endif
@@ -234,7 +206,7 @@ PHONY+=clean
 clean: ## Clean only the .tmp directories
 	find -maxdepth 1 -type d -name "*.tmp" | xargs rm -fr
 
-fmt=\033[36m%-10s\033[0m %s\n
+fmt=\033[36m%-13s\033[0m %s\n
 PHONY+=help
 help: ## Display a help screen
 	@printf '$(fmt)' 'Target' 'Description'

@@ -61,26 +61,24 @@ endef
 
 angular.tmp: $(NVM_DIR)/nvm.sh
 	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
-	# pins implicit dependencies to pre-EC6 versions:
-	# change:
-	#   "stringmap": "0.2.2"
-	# to:
-	#   "stringmap": "0.2.2","request": "2.51.0", "tough-cookie": "0.12.1"
-	cp -pv package.json $@
-	# removes:
+	# change git: URLs to https: as GitHub dropped support
+	cd $@ && \
+	    sed -i 's|git://|https://|;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
+	# pin all package versions
+	cd $@ && \
+	    sed -i 's/"~/"/; s/"^/"/;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
+	# pins implicit dependencies
+	cd $@ && \
+	    sed -i -E 's/(.*"stringmap".*)/\1,\n    "request": "2.51.0",\n    "tough-cookie": "0.12.1"/' package.json
+	# remove:
 	#   "preinstall": "node scripts/npm/check-node-modules.js --purge",
 	# which fails the build
 	cd $@ && \
 	    sed -i '/preinstall/d;' package.json
-	# pin all package versions
-	# change git: URLs to https: as GitHub doesn't support git: URLs any more
-	cd $@ && \
-	    sed -i 's/"~/"/; s/"^/"/; s|git://|https://|;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
-	# @TODO: TRY JUST:
-	# printf '{"interactive": false}' >$@/.bowerrc
 	# Stops bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
-	printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc
+	# printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc
+	printf '{"interactive": false}' >$@/.bowerrc
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(ANGULAR_NODE_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

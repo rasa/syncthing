@@ -1,0 +1,4 @@
+.config_git
+*.deb
+*.tmp
+bower_components

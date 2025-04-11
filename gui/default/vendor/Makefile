@@ -46,17 +46,6 @@ $(NVM_DIR)/nvm.sh:
 	test -f "$@" || \
 		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$(NVM_VER)/install.sh | bash
 
-PHONY+=nvm
-nvm: $(NVM_DIR)/nvm.sh
-
-# GitHub doesn't support git:// URLs any more
-# .git_configured:
-# 	# git config --global url."https://github.com/".insteadOf git://github.com/
-# 	touch $@
-
-# PHONY+=preflight
-# preflight: nvm .git_configured
-
 # $1 dir
 # $2 url
 # $3 tag
@@ -81,8 +70,9 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 	# change git: URLs to https: as GitHub doesn't support git: URLs any more
 	cd $@ && \
 	    sed -i 's/"~/"/; s/"^/"/; s|git://|https://|;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
+	# Stops bower from saying:
+	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
 	printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc
-	# -rm -f ~/.nvmrc
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(ANGULAR_NODE_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -92,7 +82,7 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 		npm install -g npm@$(NPM_VER)
 	# Try without: --no-package-lock --no-bin-links
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install --no-package-lock --no-bin-links
+		npm install
 	# installs ./node_modules/.bin/bower
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER)
@@ -107,7 +97,7 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 	# Try without: --no-package-lock --no-bin-links
 	# Try without running npm install again
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install --no-package-lock --no-bin-links
+		npm install
 	# Try without: --force
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/grunt package --force
@@ -117,34 +107,7 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 
 angular-translate.tmp: angular.tmp
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
-	cd $@ && \
-	    sed -i "/karma-phantomjs-launcher/d" package.json
-	cd $@ && \
-	    sed -i 's/"~/"/; s/"^/"/;' package.json
-	-rm -f ~/.nvmrc
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm uninstall $(ANGULAR_NODE_VER)
-	-rm -f ~/.nvmrc
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm install --default $(NODE_VER)
-	-rm -f ~/.nvmrc
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm use $(NODE_VER)
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm ls
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER) --save-dev
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER) --save-dev
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install
-	printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/bower install
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/grunt package --force
+
 	cd $@ && \
 		cp -pv build/angular-translate.js ../angular
 
@@ -166,11 +129,15 @@ bootstrap.tmp:
 		cp -pv dist/js/bootstrap.js         ../bootstrap/js && \
 		cp -pv LICENSE                      ../bootstrap/LICENSE
 
+# https://patch-diff.githubusercontent.com/raw/syncthing/syncthing/pull/8509.diff
 fancytree.tmp:
 	$(call clone,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
 	cd $@ && \
 		cp -pv dist/jquery.fancytree-all-deps.js ../fancytree && \
 		cp -pv dist/dist/LICENSE.txt ../fancytree
+
+# Updated to forkawesome 1.20 on 18-May-22:
+# https://github.com/syncthing/syncthing/pull/8349
 
 jquery.tmp:
 	$(call clone,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
@@ -212,5 +179,8 @@ help: ## Display a help screen
 	@printf '$(fmt)' 'Target' 'Description'
 	@printf '$(fmt)' '------' '------------------------------------------'
 	@awk -F ':.*##[ \t]*' '/^[^#: \t]+:.*##/ {printf "$(fmt)", $$1, $$2}' $(MAKEFILE_LIST) | sort
+
+PHONY+=nvm
+nvm: $(NVM_DIR)/nvm.sh
 
 .PHONY: $(PHONY)

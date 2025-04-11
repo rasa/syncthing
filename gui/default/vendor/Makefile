@@ -28,9 +28,9 @@ GRUNT_CLI_VER ?= 0.1.13
 # angular-translate:
 NODE_VER ?= 4.2
 
-export NVM_DIR := $(shell [ -n "$${XDG_CONFIG_HOME}" ] && printf %s "$${XDG_CONFIG_HOME}/nvm" || printf %s "$${HOME}/.nvm")
+NVM_DIR := $(shell [ -n "$${XDG_CONFIG_HOME}" ] && printf %s "$${XDG_CONFIG_HOME}/nvm" || printf %s "$${HOME}/.nvm")
 
-export PYTHON := $(shell which python2.7)
+PYTHON := $(shell which python2.7)
 
 ifeq (, $(PYTHON))
 	$(error "Cannot find python2.7")
@@ -73,8 +73,8 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 	# remove:
 	#   "preinstall": "node scripts/npm/check-node-modules.js --purge",
 	# which fails the build
-	cd $@ && \
-	    sed -i '/preinstall/d;' package.json
+	# cd $@ && \
+	#     sed -i '/preinstall/d;' package.json
 	# Stops bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
 	# printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc

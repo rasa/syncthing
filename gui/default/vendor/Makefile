@@ -1,5 +1,9 @@
 #!/usr/bin/make
 
+# @TODO deal with:
+# gui: Tweak the Restore Versions modal for better usability (#7972)
+# https://github.com/syncthing/syncthing/commit/9efac0f0678890cc0a67a8c603ec4bb1d540d89f#diff-cd84434b22af5511a55fac66ee28f9daeda01a012b0d0a3b9ce6feaa53e1dc6d
+
 PHONY+=default
 default: help ;
 
@@ -57,6 +61,7 @@ endef
 
 angular.tmp: $(NVM_DIR)/nvm.sh
 	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
+	# pins implicit dependencies to pre-EC6 versions:
 	# change:
 	#   "stringmap": "0.2.2"
 	# to:
@@ -80,13 +85,12 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 	# fixes: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
-	# Try without: --no-package-lock --no-bin-links
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 	# installs ./node_modules/.bin/bower
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER)
-	# version required:
+	# version number is required:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt@$(GRUNT_VER)
 	# installs ./node_modules/.bin/grunt
@@ -94,13 +98,11 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 		npm install grunt-cli@$(GRUNT_CLI_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/bower install
-	# Try without: --no-package-lock --no-bin-links
-	# Try without running npm install again
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 	# Try without: --force
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/grunt package --force
+		./node_modules/.bin/grunt package
 	cd $@ && \
 		cp -pv build/angular.js          ../angular && \
 		cp -pv build/angular-sanitize.js ../angular
@@ -135,9 +137,6 @@ fancytree.tmp:
 	cd $@ && \
 		cp -pv dist/jquery.fancytree-all-deps.js ../fancytree && \
 		cp -pv dist/dist/LICENSE.txt ../fancytree
-
-# Updated to forkawesome 1.20 on 18-May-22:
-# https://github.com/syncthing/syncthing/pull/8349
 
 jquery.tmp:
 	$(call clone,$@,https://github.com/jquery/jquery,$(JQUERY_VER))

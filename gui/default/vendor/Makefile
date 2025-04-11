@@ -67,6 +67,7 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 	# to:
 	#   "stringmap": "0.2.2","request": "2.51.0", "tough-cookie": "0.12.1"
 	cp -pv package.json $@
+	# removes:
 	#   "preinstall": "node scripts/npm/check-node-modules.js --purge",
 	# which fails the build
 	cd $@ && \
@@ -75,6 +76,8 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 	# change git: URLs to https: as GitHub doesn't support git: URLs any more
 	cd $@ && \
 	    sed -i 's/"~/"/; s/"^/"/; s|git://|https://|;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
+	# @TODO: TRY JUST:
+	# printf '{"interactive": false}' >$@/.bowerrc
 	# Stops bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
 	printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc
@@ -87,21 +90,19 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 		npm install -g npm@$(NPM_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
-	# installs ./node_modules/.bin/bower
+	# installs version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER)
-	# version number is required:
+		npm install -g bower
+	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER)
-	# installs ./node_modules/.bin/grunt
+		npm install -g grunt@$(GRUNT_VER)
+	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER)
+		npm install -g grunt-cli@$(GRUNT_CLI_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/bower install
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm install
+		bower install
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/grunt package
+		grunt package
 	cd $@ && \
 		cp -pv build/angular.js          ../angular && \
 		cp -pv build/angular-sanitize.js ../angular

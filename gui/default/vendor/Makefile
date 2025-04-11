@@ -4,6 +4,8 @@
 # gui: Tweak the Restore Versions modal for better usability (#7972)
 # https://github.com/syncthing/syncthing/commit/9efac0f0678890cc0a67a8c603ec4bb1d540d89f#diff-cd84434b22af5511a55fac66ee28f9daeda01a012b0d0a3b9ce6feaa53e1dc6d
 
+# https://patch-diff.githubusercontent.com/raw/syncthing/syncthing/pull/8509.diff
+
 PHONY+=default
 default: help ;
 
@@ -16,6 +18,7 @@ FANCYTREE_VER ?= v2.38.0
 JQUERY_VER ?= 2.2.2
 MOMENT_VER ?= 2.19.4
 
+# latest version:
 NVM_VER ?= v0.40.2
 NPM_VER ?= 2.15.11
 
@@ -26,11 +29,13 @@ GRUNT_VER ?= 0.4.2
 GRUNT_CLI_VER ?= 0.1.13
 
 # angular-translate:
-NODE_VER ?= 4.2
+NODE_VER ?= 4.2.6 # was 4.2
 
 NVM_DIR := $(shell [ -n "$${XDG_CONFIG_HOME}" ] && printf %s "$${XDG_CONFIG_HOME}/nvm" || printf %s "$${HOME}/.nvm")
 
 PYTHON := $(shell which python2.7)
+
+export PHANTOMJS_SKIP_RECOMMENDED := true 
 
 ifeq (, $(PYTHON))
 	$(error "Cannot find python2.7")
@@ -50,6 +55,14 @@ $(NVM_DIR)/nvm.sh:
 	test -f "$@" || \
 		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$(NVM_VER)/install.sh | bash
 
+# GitHub doesn't support git:// URLs any more
+.git_configured:
+	git config --global url."https://github.com/".insteadOf git://github.com/
+	touch $@
+
+PHONY+=setup
+setup: $(NVM_DIR)/nvm.sh .git_configured ## install nvm, and configure git
+
 # $1 dir
 # $2 url
 # $3 tag
@@ -59,36 +72,27 @@ define clone
 		git checkout -q $3
 endef
 
-angular.tmp: $(NVM_DIR)/nvm.sh
+angular.tmp: setup ## upgrade angular
 	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	# change git: URLs to https: as GitHub dropped support
-	cd $@ && \
-	    sed -i 's|git://|https://|;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
+	sed -i 's|git://|https://|;' $@/package.json $@/npm-shrinkwrap.json $@/npm-shrinkwrap.clean.json
 	# pin all package versions
-	cd $@ && \
-	    sed -i 's/"~/"/; s/"^/"/;' package.json npm-shrinkwrap.json npm-shrinkwrap.clean.json
-	# pins implicit dependencies
-	cd $@ && \
-	    sed -i -E 's/(.*"stringmap".*)/\1,\n    "request": "2.51.0",\n    "tough-cookie": "0.12.1"/' package.json
-	# remove:
-	#   "preinstall": "node scripts/npm/check-node-modules.js --purge",
-	# which fails the build
-	# cd $@ && \
-	#     sed -i '/preinstall/d;' package.json
-	# Stops bower from saying:
+	sed -i 's/"~/"/; s/"^/"/;' $@/package.json $@/npm-shrinkwrap.json $@/npm-shrinkwrap.clean.json
+	# pin transitive dependencies
+	sed -Ei 's/(.*"stringmap".*)/\1,\n    "request": "2.51.0",\n    "tough-cookie": "0.12.1"/' $@/package.json
+	# Stop bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
-	# printf '{\n  "directory": "bower_components",\n  "analytics": false,\n  "interactive": false\n}\n' >$@/.bowerrc
 	printf '{"interactive": false}' >$@/.bowerrc
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(ANGULAR_NODE_VER)
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm use $(ANGULAR_NODE_VER)
-	# fixes: npm ERR! cb() never called!
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	nvm use $(ANGULAR_NODE_VER)
+	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
-	# installs version 1.3.12
+	# install version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
 	# without the version number, 0.4.5 would be installed
@@ -101,52 +105,88 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 		bower install
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		grunt package
-	cd $@ && \
-		cp -pv build/angular.js          ../angular && \
-		cp -pv build/angular-sanitize.js ../angular
+	cp -pv $@/build/angular.js          angular
+	cp -pv $@/build/angular-sanitize.js angular
 
-angular-translate.tmp: angular.tmp
+angular-translate.tmp: setup ## upgrade angular-translate
+	@echo PHANTOMJS_SKIP_RECOMMENDED=$$PHANTOMJS_SKIP_RECOMMENDED
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
+	# change git: URLs to https: as GitHub dropped support
+	sed -i 's|git://|https://|;' $@/package.json $@/bower.json
+	# pin all package versions
+	sed -i 's/"~/"/; s/"^/"/;' $@/package.json
+	sed -Ei 's/(.*"grunt":).*/\1 "$(GRUNT_VER)",/' $@/package.json
+	# pin transitive dependencies
+	sed -Ei 's/(.*"plato".*)/\1,\n    "request": "2.51.0",\n    "tough-cookie": "0.12.1"/' $@/package.json
+	# fix: npm ERR! code EPEERINVALID
+	sed -i '/karma-phantomjs-launcher/d;' $@/package.json
+	# Stop bower from saying:
+	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
+	printf '{"interactive": false,\n"registry": "https://registry.bower.io",\n"shorthand-resolver": "https://github.com/{{owner}}/{{package}}.git"}' >$@/.bowerrc
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		nvm install --default $(NODE_VER)
+	@echo ======================================================================
+	# fix: npm ERR! cb() never called!
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install -g npm@$(NPM_VER)
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install grunt-express@0.3.3 grunt-karma@0.9.0 --save-dev
+	@echo ======================================================================
+	# without the version number, ~0.4.5 would be installed
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install -g grunt@$(GRUNT_VER) --save-dev
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install # --loglevel=error
+	@echo ======================================================================
+	# install version 1.3.12
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install -g bower
+	@echo ======================================================================
+	# without the version number, ~1.5.0 would be installed
+	cd $@ && . $(NVM_DIR)/nvm.sh &&\
+		npm install -g grunt-cli@$(GRUNT_CLI_VER)
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		bower install
+	@echo ======================================================================
+	# --force is required here
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		grunt package --force
+	@echo ======================================================================
+	cp -pv $@/build/angular-translate.js angular
 
-	cd $@ && \
-		cp -pv build/angular-translate.js ../angular
-
-angular-translate-loader-static-files.tmp: angular.tmp
+angular-translate-loader-static-files.tmp: angular.tmp ## upgrade angular-translate-loader-static-files
 	$(call clone,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_STATIC_FILES_VER))
-	cd $@ && \
-		cp -pv angular-translate-loader-static-files.js ../angular
+	cp -pv $@/angular-translate-loader-static-files.js angular
 
-angularUtils.tmp: angular.tmp
+angularUtils.tmp: angular.tmp ## upgrade angularUtils
 	$(call clone,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER)
-	cd $@ && \
-		cp -pv src/directives/pagination/dirPagination.js ../angular/angular-dirPagination.js
+	cp -pv $@/src/directives/pagination/dirPagination.js angular/angular-dirPagination.js
 
-bootstrap.tmp:
+bootstrap.tmp: ## upgrade bootstrap
 	$(call clone,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
-	cd $@ && \
-		cp -pv dist/css/bootstrap.css       ../bootstrap/css && \
-		cp -pv dist/css/bootstrap-theme.css ../bootstrap/css && \
-		cp -pv dist/js/bootstrap.js         ../bootstrap/js && \
-		cp -pv LICENSE                      ../bootstrap/LICENSE
+	cp -pv $@/dist/css/bootstrap.css       bootstrap/css
+	cp -pv $@/dist/css/bootstrap-theme.css bootstrap/css
+	cp -pv $@/dist/js/bootstrap.js         bootstrap/js
+	cp -pv $@/LICENSE                      bootstrap/LICENSE
 
-# https://patch-diff.githubusercontent.com/raw/syncthing/syncthing/pull/8509.diff
-fancytree.tmp:
+fancytree.tmp: ## upgrade fancytree
 	$(call clone,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
-	cd $@ && \
-		cp -pv dist/jquery.fancytree-all-deps.js ../fancytree && \
-		cp -pv dist/dist/LICENSE.txt ../fancytree
+	cp -pv $@/dist/jquery.fancytree-all-deps.js fancytree
+	cp -pv $@/dist/dist/LICENSE.txt fancytree
 
-jquery.tmp:
+jquery.tmp: ## upgrade jquery
 	$(call clone,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
-	cd $@ && \
-		cp -pv dist/jquery.js ../jquery/jquery-$(JQUERY_VER).js && \
-		cp -pv LICENSE.txt    ../jquery/LICENSE
+	cp -pv $@/dist/jquery.js jquery/jquery-$(JQUERY_VER).js
+	cp -pv $@/LICENSE.txt    jquery/LICENSE
 
-moment.tmp:
+moment.tmp: ## upgrade moment
 	$(call clone,$@,https://github.com/moment/moment,$(MOMENT_VER))
-	cd $@ && \
-		cp -pv moment.js ../moment
-		cp -pv LICENSE   ../moment
+	cp -pv $@/moment.js moment
+	cp -pv $@/LICENSE   moment
 
 PHONY+=all
 all: checkout_lfs download checkout_asis clean ## Run `make checkout_lfs download checkout_asis clean`

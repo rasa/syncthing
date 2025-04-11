@@ -210,7 +210,7 @@ PHONY+=clean
 clean: ## Clean only the .tmp directories
 	find -maxdepth 1 -type d -name "*.tmp" | xargs rm -fr
 
-fmt=\033[36m%-25s\033[0m %s\n
+fmt=\033[36m%-24s\033[0m %s\n
 PHONY+=help
 help: ## Display a help screen
 	@printf '$(fmt)' 'Target' 'Description'
@@ -221,28 +221,27 @@ PHONY+=nvm
 nvm: $(NVM_DIR)/nvm.sh
 
 PHONY+=angular
-angular: angular.tmp ## upgrade angular
+angular: angular.tmp ## Upgrade angular
 
-PHONY+=angular
-angular-translate: angular-translate.tmp: ## upgrade angular-translate
+PHONY+=angular-translate
+angular-translate: angular-translate.tmp ## Upgrade angular-translate
 
 PHONY+=angular-translate-loader
-angular-translate-loader: angular-translate-loader: ## upgrade angular-translate-loader
+angular-translate-loader: angular-translate-loader.tmp ## Upgrade angular-translate-loader-static-files
 
 PHONY+=angularUtils
-angularUtils: angularUtils.tmp: ## upgrade angularUtils
+angularUtils: angularUtils.tmp ## Upgrade angularUtils
 
 PHONY+=bootstrap
-bootstrap: bootstrap.tmp: ## upgrade bootstrap
+bootstrap: bootstrap.tmp ## Upgrade bootstrap
 
 PHONY+=fancytree
-fancytree: fancytree.tmp: ## upgrade fancytree
+fancytree: fancytree.tmp ## Upgrade fancytree
 
 PHONY+=jquery
-jquery: jquery.tmp: ## upgrade jquery
+jquery: jquery.tmp ## Upgrade jquery
 
 PHONY+=moment
-moment: moment.tmp: ## upgrade moment
+moment: moment.tmp ## Upgrade moment
 
 .PHONY: $(PHONY)
-

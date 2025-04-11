@@ -98,9 +98,8 @@ angular.tmp: $(NVM_DIR)/nvm.sh
 		npm install grunt-cli@$(GRUNT_CLI_VER)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/bower install
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install
-	# Try without: --force
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/grunt package
 	cd $@ && \

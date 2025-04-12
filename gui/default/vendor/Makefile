@@ -29,7 +29,7 @@ GRUNT_VER ?= 0.4.2
 GRUNT_CLI_VER ?= 0.1.13
 
 # angular-translate:
-NODE_VER ?= 4.2.6 # was 4.2
+NODE_VER ?= 4.2 # was 4.2 # tried 4.2.6 too
 
 NVM_DIR := $(shell [ -n "$${XDG_CONFIG_HOME}" ] && printf %s "$${XDG_CONFIG_HOME}/nvm" || printf %s "$${HOME}/.nvm")
 
@@ -111,15 +111,24 @@ angular.tmp: setup
 angular-translate.tmp: setup
 	@echo PHANTOMJS_SKIP_RECOMMENDED=$$PHANTOMJS_SKIP_RECOMMENDED
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
+	@echo ======================================================================
+	grep -E '"(grunt|karma)' $@/package.json
+	@echo ======================================================================
 	# change git: URLs to https: as GitHub dropped support
 	sed -i 's|git://|https://|;' $@/package.json $@/bower.json
 	# pin all package versions
 	sed -i 's/"~/"/; s/"^/"/;' $@/package.json
+	# change grunt from 0.4.1 to 0.4.2
 	sed -Ei 's/(.*"grunt":).*/\1 "$(GRUNT_VER)",/' $@/package.json
+	# change karma from 0.12.28 to 0.12.31
+	sed -Ei 's/(.*"karma":).*/\1 "0.12.31",/' $@/package.json
 	# pin transitive dependencies
 	sed -Ei 's/(.*"plato".*)/\1,\n    "request": "2.51.0",\n    "tough-cookie": "0.12.1"/' $@/package.json
 	# fix: npm ERR! code EPEERINVALID
 	sed -i '/karma-phantomjs-launcher/d;' $@/package.json
+	@echo ======================================================================
+	grep -E '"(grunt|karma)' $@/package.json
+	@echo ======================================================================
 	# Stop bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
 	printf '{"interactive": false,\n"registry": "https://registry.bower.io",\n"shorthand-resolver": "https://github.com/{{owner}}/{{package}}.git"}' >$@/.bowerrc
@@ -130,32 +139,46 @@ angular-translate.tmp: setup
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-express@0.3.3 grunt-karma@0.9.0 --save-dev
-	@echo ======================================================================
-	# without the version number, ~0.4.5 would be installed
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g grunt@$(GRUNT_VER) --save-dev
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install # --loglevel=error
-	@echo ======================================================================
-	# install version 1.3.12
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g bower
-	@echo ======================================================================
-	# without the version number, ~1.5.0 would be installed
-	cd $@ && . $(NVM_DIR)/nvm.sh &&\
-		npm install -g grunt-cli@$(GRUNT_CLI_VER)
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		bower install
-	@echo ======================================================================
-	# --force is required here
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		grunt package --force
-	@echo ======================================================================
+	# @echo ======================================================================
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install -g bower
+	# @echo ======================================================================
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install grunt-express@0.3.3
+	# 	npm install grunt-karma@0.9.0
+	# 	npm install -g grunt@$(GRUNT_VER)
+	# @echo ======================================================================
+	grep -E '"(grunt|karma)' $@/package.json
+	# @echo ======================================================================
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install grunt-karma@0.9.0
+	# @echo ======================================================================
+	# grep -E '"(grunt|karma)' $@/package.json
+	# @echo ======================================================================
+	# # without the version number, ~0.4.5 would be installed
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install -g grunt@$(GRUNT_VER)
+	# @echo ======================================================================
+	# grep -E "(grunt|karma)" $@/package.json
+	# @echo ======================================================================
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install # --loglevel=error
+	# @echo ======================================================================
+	# # install version 1.3.12
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install -g bower
+	# @echo ======================================================================
+	# # without the version number, ~1.5.0 would be installed
+	# cd $@ && . $(NVM_DIR)/nvm.sh &&\
+	# 	npm install -g grunt-cli@$(GRUNT_CLI_VER)
+	# @echo ======================================================================
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	bower install
+	# @echo ======================================================================
+	# # --force is required here
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	grunt package --force
+	# @echo ======================================================================
 	cp -pv $@/build/angular-translate.js angular
 
 angular-translate-loader.tmp: angular

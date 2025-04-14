@@ -9,33 +9,39 @@
 PHONY+=default
 default: help ;
 
+# What syncthing is using now:
 ANGULAR_VER ?= v1.3.20
 ANGULAR_TRANSLATE_VER ?= 2.9.0
-ANGULAR_TRANSLATE_LOADER_STATIC_FILES_VER ?= 2.11.0
+ANGULAR_TRANSLATE_LOADER_VER ?= 2.11.0
 ANGULAR_UTILS_VER ?= 759009c
 BOOTSTRAP_VER ?= v3.3.6
 FANCYTREE_VER ?= v2.38.0
 JQUERY_VER ?= 2.2.2
 MOMENT_VER ?= 2.19.4
 
-# latest version:
+# latest versions:
 NVM_VER ?= v0.40.2
 NPM_VER ?= 2.15.11
 
-# angular:
-ANGULAR_NODE_VER ?= 0.10.48
+# shared:
 BOWER_VER ?= 1.3.12
 GRUNT_VER ?= 0.4.2
 GRUNT_CLI_VER ?= 0.1.13
+TOUCH_COOKIE_VER ?= 0.12.1
 
-# angular-translate:
-NODE_VER ?= 4.2 # was 4.2 # tried 4.2.6 too
+# angular 1.3.20 versions:
+ANGULAR_NODE_VER ?= 0.10.48
+REQUEST_VER ?= 2.51.0
+
+# angular-translate 2.9.0's versions:
+NODE_VER ?= 4.2.6
+GRUNT_EXPRESS_VER ?= 0.2.1 
+GRUNT_KARMA_VER ?= 0.8.3
+KARMA_VER ?= 0.12.31
 
 NVM_DIR := $(shell [ -n "$${XDG_CONFIG_HOME}" ] && printf %s "$${XDG_CONFIG_HOME}/nvm" || printf %s "$${HOME}/.nvm")
 
 PYTHON := $(shell which python2.7)
-
-export PHANTOMJS_SKIP_RECOMMENDED := true 
 
 ifeq (, $(PYTHON))
 	$(error "Cannot find python2.7")
@@ -72,192 +78,132 @@ define clone
 		git checkout -q $3
 endef
 
-angular.tmp: setup
-	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
-	# change git: URLs to https: as GitHub dropped support
-	sed -i 's|git://|https://|;' $@/package.json $@/npm-shrinkwrap.json $@/npm-shrinkwrap.clean.json
-	# pin all package versions
-	sed -i 's/"~/"/; s/"^/"/;' $@/package.json $@/npm-shrinkwrap.json $@/npm-shrinkwrap.clean.json
-	# pin transitive dependencies
-	sed -Ei 's/(.*"stringmap".*)/\1,\n    "request": "2.51.0",\n    "tough-cookie": "0.12.1"/' $@/package.json
+# $1 dir
+define common
 	# Stop bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
 	printf '{"interactive": false}' >$@/.bowerrc
+	# change git: URLs to https: as GitHub dropped support
+	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
+		sed -i 's|git://|https://|;' 
+	# pin all package versions
+	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
+		sed -i 's/"~/"/; s/"^/"/;'
+endef
+
+angular.tmp: setup
+	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
+	$(call common,$@)
+
+	# not shared:
+	# pin transitive dependencies
+	sed -Ei 's/(.*"stringmap".*)/\1,\n    "request": "$(REQUEST_VER)",\n    "tough-cookie": "$(TOUCH_COOKIE_VER)"/' $@/package.json
+
+	# shared (but installs older node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(ANGULAR_NODE_VER)
+
+	# shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
+
+	# shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
+
+	# shared, but has -g:
 	# install version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
+
+	# grunt shared (but installs grunt later, with -g)
+	# not shared, but has -g:
 	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt@$(GRUNT_VER)
+
+	# shared, but has -g:
 	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt-cli@$(GRUNT_CLI_VER)
+
+	# shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		bower install
+
+	# shared (but uses package instead of build:core):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		grunt package
+
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
 
-GRUNT_EXPRESS_VER=0.2.1 
-GRUNT_KARMA_VER=0.8.3
-# GRUNT_EXPRESS_VER=0.1.3
-# GRUNT_KARMA_VER=0.8.0
-# GRUNT_EXPRESS_VER=0.1.2
-# GRUNT_KARMA_VER=0.7.3
-# GRUNT_EXPRESS_VER=0.1.1
-# GRUNT_KARMA_VER=0.7.2
-
-KARMA_VER=0.12.31
-# KARMA_VER=0.11.14
-
-TOUCH_COOKIE_VER=0.12.1
-REQUEST_VER=2.51.0
-
-define fixups
-	find $1 -name package.json | wc -l
-	find $1 -name package.json | xargs -r -n 1 chmod +w
-	find $1 -name package.json -o -name 'bower.json' | xargs -r -n 1 \
-		sed -i 's|git://|https://|;'
-	find $1 -name package.json | xargs -r \
-		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
-	find $1 -name package.json | xargs -r -n 1 \
-		sed -Ei 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/'
-	find $1 -name package.json | xargs -r -n 1 \
-		sed -Ei 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/'
-	find $1 -name package.json | xargs -r -n 1 \
-		sed -Ei 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/'
-	find $1 -name package.json | xargs -r -n 1 \
-		sed -Ei 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/'
-	find $1 -name package.json | xargs -r -n 1 \
-		sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
-	# find $1 -type d -name grunt         -exec rm -rf {} +
-	# find $1 -type d -name grunt-cli     -exec rm -rf {} +
-	# find $1 -type d -name grunt-express -exec rm -rf {} +
-	# find $1 -type d -name grunt-karma   -exec rm -rf {} +
-	# find $1 -type d -name karma         -exec rm -rf {} +
-	# find $1 -type d -name tough-cookie  -exec rm -rf {} +
-	-find $1 -name 'package.json' | xargs grep '"tough-cookie": "'
-	find $1 -name package.json | wc -l
-	npm dedupe
-	find $1 -name package.json | wc -l
-	find $1 -name package.json | xargs -r -n 1 \
-		chmod -w
-endef
-
-	# # change git: URLs to https: as GitHub dropped support
-	# sed -i 's|git://|https://|;' $@/package.json $@/bower.json
-	# # pin all package versions
-	# sed -i 's/"~/"/; s/"^/"/;' $@/package.json
-	# # change grunt from 0.4.1 to 0.4.2
-	# sed -Ei 's/(.*"grunt":).*/\1 "$(GRUNT_VER)",/' $@/package.json
-	# # change karma from 0.12.28 to 0.12.31
-	# sed -Ei 's/(.*"karma":).*/\1 "$(KARMA_VER)",/' $@/package.json
-	# # change grunt-express from 0.3.3 to 0.2.1
-	# sed -Ei 's/(.*"grunt-express":).*/\1 "$(GRUNT_EXPRESS_VER)",/' $@/package.json
-	# # change grunt-karma from 0.9.0 to 0.8.3
-	# sed -Ei 's/(.*"grunt-karma":).*/\1 "$(GRUNT_KARMA_VER)",/' $@/package.json
-
-fixme:
-	$(call fixups,angular-translate.tmp)
-
 angular-translate.tmp: setup
-	@echo PHANTOMJS_SKIP_RECOMMENDED=$$PHANTOMJS_SKIP_RECOMMENDED
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
-	@echo ======================================================================
-	# remove angular dependency:
-	sed -Ei '/"angular": ">=1.2.26 <=1.5"/d' $@/package.json
-	sed -i '/"prepublish": "bower install",/d' $@/package.json
-	# @echo ======================================================================
-	# grep -E '"(grunt|karma)' $@/package.json
-	@echo ======================================================================
-	find $@ -name package.json -o -name bower.json | xargs -r -n 1 \
-		sed -i 's/"~/"/; s/"^/"/;'
-	@echo ======================================================================
-	$(call fixups,$@)
-	@echo ======================================================================
-	# grep -E '"(grunt|karma)' $@/package.json
-	@echo ======================================================================
-	# pin transitive dependencies
-	sed -Ei 's/(.*"plato".*)/\1,\n    "request": "$(REQUEST_VER)",\n    "tough-cookie": "$(TOUCH_COOKIE_VER)"/' $@/package.json
-	# fix: npm ERR! code EPEERINVALID
-	sed -i '/karma-phantomjs-launcher/d;' $@/package.json
-	# Stop bower from saying:
-	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
-	printf '{"interactive": false,\n"registry": "https://registry.bower.io",\n"shorthand-resolver": "https://github.com/{{owner}}/{{package}}.git"}' >$@/.bowerrc
-	# @echo ======================================================================
-	# grep -E '"(grunt|karma)' $@/package.json
-	@echo ======================================================================
+	$(call common,$@)
+	find $@ -type f -name package.json | xargs -r \
+		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
+	find $@ -type f -name package.json | xargs \
+		sed -Ei 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/'
+	find $@ -type f -name package.json | xargs \
+		sed -Ei 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/'
+	find $@ -type f -name package.json | xargs \
+		sed -Ei 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/'
+	find $@ -type f -name package.json | xargs \
+		sed -Ei 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/'
+	find $@ -type f -name package.json | xargs \
+		sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
+
+	# shared (but installs newer node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(NODE_VER)
-	@echo ======================================================================
+
+	# shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
-	@echo ======================================================================
+
+	# grunt shared (but installs grunt earlier)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-express@$(GRUNT_EXPRESS_VER)
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-karma@$(GRUNT_KARMA_VER)
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install karma@$(KARMA_VER)
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install tough-cookie@$(TOUCH_COOKIE_VER)
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER)
-	$(call fixups,$@/node_modules)
-	@echo ======================================================================
+		npm install \
+			grunt@$(GRUNT_VER) \
+			grunt-express@$(GRUNT_EXPRESS_VER) \
+			grunt-karma@$(GRUNT_KARMA_VER) \
+			karma@$(KARMA_VER) \
+			tough-cookie@$(TOUCH_COOKIE_VER)
+
+	# shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
-	$(call fixups,$@/node_modules)
-	@echo ======================================================================
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm ls --depth=0
-	@echo ======================================================================
+
+	# not shared, but maybe could be shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
-	@echo ======================================================================
+
+	# shared, but no -g:
 	# install version 1.3.12
-	-cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER)
-	$(call fixups,$@/node_modules)
-	@echo ======================================================================
-	-cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER)
-	$(call fixups,$@/node_modules)
-	@echo ======================================================================
-	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER)
-	$(call fixups,$@/node_modules)
-	@echo ======================================================================
+		npm install bower@$(BOWER_VER)
+
+	# not shared (but perhaps it could be):
 	# without the version number, 1.5.0 would be installed
+	# moving this up breaks the build
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER)
-	$(call fixups,$@/node_modules)
-	@echo ======================================================================
+
+	# shared, but uses local install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/bower install
-	$(call fixups,$@/node_modules)
-	@echo ======================================================================
+
+	# shared, but uses local install,uses build:core instead of package:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/grunt build:core
-	@echo ======================================================================
-	cp -pv $@/build/angular-translate.js angular
+
+	cp -pv $@/dist/angular-translate.js angular
 
 angular-translate-loader.tmp: angular
-	$(call clone,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_STATIC_FILES_VER))
+	$(call clone,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
 	cp -pv $@/angular-translate-loader-static-files.js angular
 
 angularUtils.tmp: angular
@@ -287,7 +233,7 @@ moment.tmp:
 	cp -pv $@/LICENSE   moment
 
 PHONY+=all
-all: checkout_lfs download checkout_asis clean ## Run `make checkout_lfs download checkout_asis clean`
+all: checkout_lfs download checkout_asis ## Run `make checkout_lfs download checkout_asis`
 
 PHONY+=checkout_lfs
 checkout_lfs: ## Set git to checkout all text files with LF line endings (Windows only)

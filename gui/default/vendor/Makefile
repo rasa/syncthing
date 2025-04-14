@@ -138,6 +138,8 @@ angular.tmp: setup
 
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
+	-cp -pv $@/LICENSE angular/angular.js.LICENSE
+	-cp -pv $@/LICENSE angular/angular-sanitize.js.LICENSE
 
 angular-translate.tmp: setup
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
@@ -201,36 +203,39 @@ angular-translate.tmp: setup
 		./node_modules/.bin/grunt build:core
 
 	cp -pv $@/dist/angular-translate.js angular
+	-cp -pv $@/angular-translate.js.LICENSE
 
-angular-translate-loader.tmp: angular
+angular-translate-loader.tmp:
 	$(call clone,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
 	cp -pv $@/angular-translate-loader-static-files.js angular
+	-cp -pv $@/LICENSE angular/angular-translate-loader-static-files.js.LICENSE
 
-angularUtils.tmp: angular
-	$(call clone,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER)
+angularUtils.tmp:
+	$(call clone,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER))
 	cp -pv $@/src/directives/pagination/dirPagination.js angular/angular-dirPagination.js
+	-cp -pv $@/LICENSE angular/angular-dirPagination.js.LICENSE
 
 bootstrap.tmp:
 	$(call clone,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
 	cp -pv $@/dist/css/bootstrap.css       bootstrap/css
 	cp -pv $@/dist/css/bootstrap-theme.css bootstrap/css
 	cp -pv $@/dist/js/bootstrap.js         bootstrap/js
-	cp -pv $@/LICENSE                      bootstrap/LICENSE
+	-cp -pv $@/LICENSE                      bootstrap/LICENSE
 
 fancytree.tmp:
 	$(call clone,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
 	cp -pv $@/dist/jquery.fancytree-all-deps.js fancytree
-	cp -pv $@/dist/dist/LICENSE.txt fancytree
+	-cp -pv $@/dist/LICENSE.txt fancytree
 
 jquery.tmp:
 	$(call clone,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
 	cp -pv $@/dist/jquery.js jquery/jquery-$(JQUERY_VER).js
-	cp -pv $@/LICENSE.txt    jquery/LICENSE
+	-cp -pv $@/LICENSE.txt    jquery/LICENSE
 
 moment.tmp:
 	$(call clone,$@,https://github.com/moment/moment,$(MOMENT_VER))
 	cp -pv $@/moment.js moment
-	cp -pv $@/LICENSE   moment
+	-cp -pv $@/LICENSE   moment
 
 PHONY+=all
 all: checkout_lfs download checkout_asis ## Run `make checkout_lfs download checkout_asis`

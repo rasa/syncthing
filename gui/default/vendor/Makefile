@@ -106,35 +106,50 @@ angular.tmp: setup
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
 
-# GRUNT_EXPRESS_VER=0.2.1 
-# GRUNT_KARMA_VER=0.8.3
+GRUNT_EXPRESS_VER=0.2.1 
+GRUNT_KARMA_VER=0.8.3
 # GRUNT_EXPRESS_VER=0.1.3
 # GRUNT_KARMA_VER=0.8.0
 # GRUNT_EXPRESS_VER=0.1.2
 # GRUNT_KARMA_VER=0.7.3
-GRUNT_EXPRESS_VER=0.1.1
-GRUNT_KARMA_VER=0.7.2
-#KARMA_VER=0.12.31
-KARMA_VER=0.11.14
+# GRUNT_EXPRESS_VER=0.1.1
+# GRUNT_KARMA_VER=0.7.2
+
+KARMA_VER=0.12.31
+# KARMA_VER=0.11.14
+
 TOUCH_COOKIE_VER=0.12.1
 REQUEST_VER=2.51.0
 
 define fixups
-	sed -i 's|git://|https://|;' $$(find $1 -name package.json -o -name bower.json)
-	sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'                 $$(find $1 -name package.json)
-	sed -Ei 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/'         $$(find $1 -name package.json)
-	sed -Ei 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/' $$(find $1 -name package.json)
-	sed -Ei 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/'     $$(find $1 -name package.json)
-	sed -Ei 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/'                 $$(find $1 -name package.json)
-	sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'   $$(find $1 -name package.json)
-	find $1 -type d -name grunt         -exec rm -rf {} +
-	find $1 -type d -name grunt-cli     -exec rm -rf {} +
-	find $1 -type d -name grunt-express -exec rm -rf {} +
-	find $1 -type d -name grunt-karma   -exec rm -rf {} +
-	find $1 -type d -name karma         -exec rm -rf {} +
-	find $1 -type d -name tough-cookie  -exec rm -rf {} +
+	find $1 -name package.json | wc -l
+	find $1 -name package.json | xargs -r -n 1 chmod +w
+	find $1 -name package.json -o -name 'bower.json' | xargs -r -n 1 \
+		sed -i 's|git://|https://|;'
+	find $1 -name package.json | xargs -r \
+		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
+	find $1 -name package.json | xargs -r -n 1 \
+		sed -Ei 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/'
+	find $1 -name package.json | xargs -r -n 1 \
+		sed -Ei 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/'
+	find $1 -name package.json | xargs -r -n 1 \
+		sed -Ei 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/'
+	find $1 -name package.json | xargs -r -n 1 \
+		sed -Ei 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/'
+	find $1 -name package.json | xargs -r -n 1 \
+		sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
+	# find $1 -type d -name grunt         -exec rm -rf {} +
+	# find $1 -type d -name grunt-cli     -exec rm -rf {} +
+	# find $1 -type d -name grunt-express -exec rm -rf {} +
+	# find $1 -type d -name grunt-karma   -exec rm -rf {} +
+	# find $1 -type d -name karma         -exec rm -rf {} +
+	# find $1 -type d -name tough-cookie  -exec rm -rf {} +
 	-find $1 -name 'package.json' | xargs grep '"tough-cookie": "'
+	find $1 -name package.json | wc -l
 	npm dedupe
+	find $1 -name package.json | wc -l
+	find $1 -name package.json | xargs -r -n 1 \
+		chmod -w
 endef
 
 	# # change git: URLs to https: as GitHub dropped support
@@ -157,14 +172,18 @@ angular-translate.tmp: setup
 	@echo PHANTOMJS_SKIP_RECOMMENDED=$$PHANTOMJS_SKIP_RECOMMENDED
 	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	@echo ======================================================================
+	# remove angular dependency:
 	sed -Ei '/"angular": ">=1.2.26 <=1.5"/d' $@/package.json
+	sed -i '/"prepublish": "bower install",/d' $@/package.json
+	# @echo ======================================================================
+	# grep -E '"(grunt|karma)' $@/package.json
 	@echo ======================================================================
-	grep -E '"(grunt|karma)' $@/package.json
+	find $@ -name package.json -o -name bower.json | xargs -r -n 1 \
+		sed -i 's/"~/"/; s/"^/"/;'
 	@echo ======================================================================
-	sed -i 's/"~/"/; s/"^/"/;'   $$(find $@ -name package.json)
 	$(call fixups,$@)
 	@echo ======================================================================
-	grep -E '"(grunt|karma)' $@/package.json
+	# grep -E '"(grunt|karma)' $@/package.json
 	@echo ======================================================================
 	# pin transitive dependencies
 	sed -Ei 's/(.*"plato".*)/\1,\n    "request": "$(REQUEST_VER)",\n    "tough-cookie": "$(TOUCH_COOKIE_VER)"/' $@/package.json
@@ -173,8 +192,8 @@ angular-translate.tmp: setup
 	# Stop bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
 	printf '{"interactive": false,\n"registry": "https://registry.bower.io",\n"shorthand-resolver": "https://github.com/{{owner}}/{{package}}.git"}' >$@/.bowerrc
-	@echo ======================================================================
-	grep -E '"(grunt|karma)' $@/package.json
+	# @echo ======================================================================
+	# grep -E '"(grunt|karma)' $@/package.json
 	@echo ======================================================================
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(NODE_VER)
@@ -184,30 +203,48 @@ angular-translate.tmp: setup
 		npm install -g npm@$(NPM_VER)
 	@echo ======================================================================
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-express@$(GRUNT_EXPRESS_VER) grunt-karma@$(GRUNT_KARMA_VER) --no-save
+		npm install grunt-express@$(GRUNT_EXPRESS_VER)
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install grunt-karma@$(GRUNT_KARMA_VER)
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install karma@$(KARMA_VER)
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install tough-cookie@$(TOUCH_COOKIE_VER)
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install grunt@$(GRUNT_VER)
 	$(call fixups,$@/node_modules)
 	@echo ======================================================================
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install --no-save
+		npm install
 	$(call fixups,$@/node_modules)
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm ls --depth=0
+	@echo ======================================================================
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm shrinkwrap --dev
 	@echo ======================================================================
 	# install version 1.3.12
 	-cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER) --no-save
+		npm install bower@$(BOWER_VER)
 	$(call fixups,$@/node_modules)
 	@echo ======================================================================
 	-cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER) --no-save
+		npm install bower@$(BOWER_VER)
 	$(call fixups,$@/node_modules)
 	@echo ======================================================================
 	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER) --no-save
+		npm install grunt@$(GRUNT_VER)
 	$(call fixups,$@/node_modules)
 	@echo ======================================================================
 	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER) --no-save
+		npm install grunt-cli@$(GRUNT_CLI_VER)
 	$(call fixups,$@/node_modules)
 	@echo ======================================================================
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

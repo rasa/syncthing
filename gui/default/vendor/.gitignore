@@ -1,4 +1,4 @@
-.config_git
+.git_configured
 *.deb
 *.tmp
 bower_components

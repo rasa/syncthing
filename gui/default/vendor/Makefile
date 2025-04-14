@@ -252,7 +252,7 @@ angular-translate.tmp: setup
 	$(call fixups,$@/node_modules)
 	@echo ======================================================================
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/grunt package
+		./node_modules/.bin/grunt build:core
 	@echo ======================================================================
 	cp -pv $@/build/angular-translate.js angular
 

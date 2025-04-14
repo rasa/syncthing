@@ -72,8 +72,10 @@ setup: $(NVM_DIR)/nvm.sh .git_configured ## install nvm, and configure git
 # $1 dir
 # $2 url
 # $3 tag
-define clone
-	git clone -q $2 $1
+define checkout
+	test -d $1 || git clone -q $2 $1
+	# git reset --hard
+	# git clean -fdx
 	cd $1 && \
 		git checkout -q $3
 endef
@@ -92,9 +94,10 @@ define common
 endef
 
 angular.tmp: setup
-	$(call clone,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
+	$(call checkout,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call common,$@)
 
+	# @TODO try removing:
 	# not shared:
 	# pin transitive dependencies
 	sed -Ei 's/(.*"stringmap".*)/\1,\n    "request": "$(REQUEST_VER)",\n    "tough-cookie": "$(TOUCH_COOKIE_VER)"/' $@/package.json
@@ -108,30 +111,41 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
 
+	# @TODO TRY INSTALLING INSTEAD:
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install request@$(REQUEST_VER)
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install tough-cookie@$(TOUCH_COOKIE_VER)
+
 	# shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 
+	# @TODO TRY WITHOUT -g
 	# shared, but has -g:
 	# install version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
 
-	# grunt shared (but installs grunt later, with -g)
+	# @TODO TRY WITHOUT -g
+	# grunt shared (but here we install grunt later, with -g)
 	# not shared, but has -g:
 	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt@$(GRUNT_VER)
 
+	# @TODO TRY WITHOUT -g
 	# shared, but has -g:
 	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt-cli@$(GRUNT_CLI_VER)
 
+	# @TODO TRY WITH ./node_modules/.bin/bower
 	# shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		bower install
 
+	# @TODO TRY WITH ./node_modules/.bin/grunt
 	# shared (but uses package instead of build:core):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		grunt package
@@ -142,7 +156,7 @@ angular.tmp: setup
 	-cp -pv $@/LICENSE angular/angular-sanitize.js.LICENSE
 
 angular-translate.tmp: setup
-	$(call clone,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
+	$(call checkout,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call common,$@)
 	find $@ -type f -name package.json | xargs -r \
 		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
@@ -166,7 +180,7 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
 
-	# grunt shared (but installs grunt earlier)
+	# grunt shared (but here we install grunt earlier, without -g)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			grunt@$(GRUNT_VER) \
@@ -203,37 +217,37 @@ angular-translate.tmp: setup
 		./node_modules/.bin/grunt build:core
 
 	cp -pv $@/dist/angular-translate.js angular
-	-cp -pv $@/angular-translate.js.LICENSE
+	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE
 
 angular-translate-loader.tmp:
-	$(call clone,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
+	$(call checkout,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
 	cp -pv $@/angular-translate-loader-static-files.js angular
 	-cp -pv $@/LICENSE angular/angular-translate-loader-static-files.js.LICENSE
 
 angularUtils.tmp:
-	$(call clone,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER))
+	$(call checkout,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER))
 	cp -pv $@/src/directives/pagination/dirPagination.js angular/angular-dirPagination.js
 	-cp -pv $@/LICENSE angular/angular-dirPagination.js.LICENSE
 
 bootstrap.tmp:
-	$(call clone,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
+	$(call checkout,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
 	cp -pv $@/dist/css/bootstrap.css       bootstrap/css
 	cp -pv $@/dist/css/bootstrap-theme.css bootstrap/css
 	cp -pv $@/dist/js/bootstrap.js         bootstrap/js
 	-cp -pv $@/LICENSE                      bootstrap/LICENSE
 
 fancytree.tmp:
-	$(call clone,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
+	$(call checkout,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
 	cp -pv $@/dist/jquery.fancytree-all-deps.js fancytree
 	-cp -pv $@/dist/LICENSE.txt fancytree
 
 jquery.tmp:
-	$(call clone,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
+	$(call checkout,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
 	cp -pv $@/dist/jquery.js jquery/jquery-$(JQUERY_VER).js
 	-cp -pv $@/LICENSE.txt    jquery/LICENSE
 
 moment.tmp:
-	$(call clone,$@,https://github.com/moment/moment,$(MOMENT_VER))
+	$(call checkout,$@,https://github.com/moment/moment,$(MOMENT_VER))
 	cp -pv $@/moment.js moment
 	-cp -pv $@/LICENSE   moment
 
@@ -258,6 +272,7 @@ download: $(DIRS) ## Download all the files
 PHONY+=clean
 clean: ## Clean only the .tmp directories
 	find -maxdepth 1 -type d -name "*.tmp" | xargs rm -fr
+	rm -fr *.deb
 
 fmt=\033[36m%-24s\033[0m %s\n
 PHONY+=help

@@ -114,7 +114,7 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
 	#
-	# 4a. @TODO TRY INSTALLING INSTEAD:
+	# 4a. sort shared (installs grunt, grunt-express, grunt-karma, karma, tough-cookie instead)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			request@$(REQUEST_VER) \
@@ -124,20 +124,22 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 	#
-	# @TODO TRY WITHOUT -g
+	# @TODO TRY ADDING 7.
+	#
+	# @TODO TRY INSTALLING WITHOUT -g
 	# 8. shared, but has -g:
 	# install version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
 	#
-	# @TODO TRY WITHOUT -g
+	# @TODO TRY INSTALLING WITHOUT -g
 	# grunt shared (but here we install grunt later, with -g)
 	# 9. not shared, but has -g:
 	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt@$(GRUNT_VER)
 	#
-	# @TODO TRY WITHOUT -g
+	# @TODO TRY INSTALLING WITHOUT -g
 	# 10. shared, but has -g:
 	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -162,7 +164,7 @@ angular.tmp: setup
 angular-translate.tmp: setup
 	$(call checkout,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call common,$@)
-
+	#
 	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs -r \
 		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
@@ -191,7 +193,8 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
 	#
-	# 5b. grunt shared (but here we install grunt earlier, without -g)
+	# @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
+	# 5b. sorta shared (but other installs request, tough-cookie instead)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			grunt@$(GRUNT_VER) \
@@ -208,11 +211,13 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
 	#
+	# @TODO TRY INSTALLED WITH -g
 	# 8. shared, but no -g:
 	# install version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER)
 	#
+	# @TODO TRY INSTALLED WITH -g
 	# 10. shared:
 	# without the version number, 1.5.0 would be installed
 	# moving this up breaks the build

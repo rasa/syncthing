@@ -104,11 +104,15 @@ endef
 angular.tmp: setup
 	$(call checkout,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call common,$@)
-	#
+	# not needed, but it makes sense:
+	# sed -i 's|"angular": ">=1.2.26 <=1.5"|"angular": "$(ANGULAR_VER)"' $@/package.json
+
+	# @TODO TRY MOVING TO common
 	# 2. shared (but installs older node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(ANGULAR_NODE_VER)
 	#
+	# @TODO TRY MOVING TO common
 	# 3. shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -120,6 +124,7 @@ angular.tmp: setup
 			request@$(REQUEST_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER)
 	#
+	# @TODO TRY MOVING TO common2
 	# 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install

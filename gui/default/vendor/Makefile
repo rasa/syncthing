@@ -133,10 +133,9 @@ angular.tmp: setup
 	# 9. not shared, but has -g:
 	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g grunt@$(GRUNT_VER)
+		npm install grunt@$(GRUNT_VER)
 	#
-	# @TODO TRY INSTALLING WITHOUT -g
-	# 10. shared, but has -g:
+	# 10. shared:
 	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER)
@@ -146,7 +145,6 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		bower install
 	#
-	# @TODO TRY WITH ./node_modules/.bin/grunt
 	# 12a. shared (but uses package instead of build:core):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/grunt package
@@ -255,6 +253,10 @@ bootstrap.tmp:
 
 fancytree.tmp:
 	$(call checkout,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
+	cd $@/dist && \
+		patch --batch --ignore-whitespace --strip=5 < ../../8509.patch
+	cd $@/dist && \
+		patch --batch --ignore-whitespace  --strip=1 < ../../f085361.patch
 	cp -pv $@/dist/jquery.fancytree-all-deps.js fancytree
 	-cp -pv $@/dist/LICENSE.txt fancytree
 	touch $@

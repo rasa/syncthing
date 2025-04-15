@@ -1,9 +1,5 @@
 #!/usr/bin/make
 
-# @TODO deal with:
-# gui: Tweak the Restore Versions modal for better usability (#7972)
-# https://github.com/syncthing/syncthing/commit/9efac0f0678890cc0a67a8c603ec4bb1d540d89f#diff-cd84434b22af5511a55fac66ee28f9daeda01a012b0d0a3b9ce6feaa53e1dc6d
-
 # https://patch-diff.githubusercontent.com/raw/syncthing/syncthing/pull/8509.diff
 
 PHONY+=default
@@ -98,7 +94,7 @@ angular.tmp: setup
 	$(call common,$@)
 	# not needed, but it makes sense:
 	# sed -i 's|"angular": ">=1.2.26 <=1.5"|"angular": "$(ANGULAR_VER)"' $@/package.json
-  #
+    #
 	# @TODO TRY MOVING TO common
 	# 2. shared (but installs older node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -127,7 +123,8 @@ angular.tmp: setup
 	#
 	# @TODO TRY INSTALLING WITHOUT -g
 	# 8. shared, but has -g:
-	# install version 1.3.12
+	# this installs version 1.8.3, as
+	# pinning to 1.3.12 breaks the build?
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
 	#
@@ -142,7 +139,7 @@ angular.tmp: setup
 	# 10. shared, but has -g:
 	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g grunt-cli@$(GRUNT_CLI_VER)
+		npm install grunt-cli@$(GRUNT_CLI_VER)
 	#
 	# @TODO TRY WITH ./node_modules/.bin/bower
 	# 11. shared, but uses global install:
@@ -152,7 +149,7 @@ angular.tmp: setup
 	# @TODO TRY WITH ./node_modules/.bin/grunt
 	# 12a. shared (but uses package instead of build:core):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		grunt package
+		./node_modules/.bin/grunt package
 	#
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular

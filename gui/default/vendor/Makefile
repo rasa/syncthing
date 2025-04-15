@@ -121,10 +121,10 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
 	#
-	# @TODO TRY INSTALLING WITHOUT -g
 	# 8. shared, but has -g:
 	# this installs version 1.8.3, as
-	# pinning to 1.3.12 breaks the build?
+	# build breaks when pinned to 1.3.12
+	# also, removing the -g causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
 	#

@@ -35,7 +35,7 @@ REQUEST_VER ?= 2.51.0
 
 # angular-translate 2.9.0's versions:
 NODE_VER ?= 4.2.6
-GRUNT_EXPRESS_VER ?= 0.2.1 
+GRUNT_EXPRESS_VER ?= 0.2.1
 GRUNT_KARMA_VER ?= 0.8.3
 KARMA_VER ?= 0.12.31
 
@@ -83,23 +83,15 @@ endef
 # $1 dir
 define common
 	# Stop bower from saying:
-	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n) 
+	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
 	printf '{"interactive": false}' >$@/.bowerrc
 	# change git: URLs to https: as GitHub dropped support
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
-		sed -i 's|git://|https://|;' 
+		sed -i 's|git://|https://|;'
 	# pin all package versions
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
 		sed -i 's/"~/"/; s/"^/"/;'
 endef
-
-# not needed:
-# @TODO try removing:
-# not shared:
-# pin transitive dependencies
-# cat $@/package.json
-# sed -Ei 's/(.*"stringmap".*)/\1,\n    "request": "$(REQUEST_VER)",\n    "tough-cookie": "$(TOUCH_COOKIE_VER)"/' $@/package.json
-# cat $@/package.json
 
 angular.tmp: setup
 	$(call checkout,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))

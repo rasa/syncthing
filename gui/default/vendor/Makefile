@@ -93,61 +93,63 @@ define common
 		sed -i 's/"~/"/; s/"^/"/;'
 endef
 
+# not needed:
+# @TODO try removing:
+# not shared:
+# pin transitive dependencies
+# cat $@/package.json
+# sed -Ei 's/(.*"stringmap".*)/\1,\n    "request": "$(REQUEST_VER)",\n    "tough-cookie": "$(TOUCH_COOKIE_VER)"/' $@/package.json
+# cat $@/package.json
+
 angular.tmp: setup
 	$(call checkout,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call common,$@)
-	# @TODO try removing:
-	# not shared:
-	# pin transitive dependencies
-	cat $@/package.json
-	sed -Ei 's/(.*"stringmap".*)/\1,\n    "request": "$(REQUEST_VER)",\n    "tough-cookie": "$(TOUCH_COOKIE_VER)"/' $@/package.json
-	cat $@/package.json
 	#
-	# shared (but installs older node version):
+	# 2. shared (but installs older node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(ANGULAR_NODE_VER)
 	#
-	# shared:
+	# 3. shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
 	#
-	# @TODO TRY INSTALLING INSTEAD:
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm install request@$(REQUEST_VER)
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm install tough-cookie@$(TOUCH_COOKIE_VER)
+	# 4a. @TODO TRY INSTALLING INSTEAD:
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install request@$(REQUEST_VER)
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install tough-cookie@$(TOUCH_COOKIE_VER)
 	#
-	# shared:
+	# 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 	#
 	# @TODO TRY WITHOUT -g
-	# shared, but has -g:
+	# 8. shared, but has -g:
 	# install version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
 	#
 	# @TODO TRY WITHOUT -g
 	# grunt shared (but here we install grunt later, with -g)
-	# not shared, but has -g:
+	# 9. not shared, but has -g:
 	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt@$(GRUNT_VER)
 	#
 	# @TODO TRY WITHOUT -g
-	# shared, but has -g:
+	# 10. shared, but has -g:
 	# without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt-cli@$(GRUNT_CLI_VER)
 	#
 	# @TODO TRY WITH ./node_modules/.bin/bower
-	# shared, but uses global install:
+	# 11. shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		bower install
 	#
 	# @TODO TRY WITH ./node_modules/.bin/grunt
-	# shared (but uses package instead of build:core):
+	# 12a. shared (but uses package instead of build:core):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		grunt package
 	#
@@ -160,29 +162,36 @@ angular.tmp: setup
 angular-translate.tmp: setup
 	$(call checkout,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call common,$@)
+
+	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs -r \
 		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
+	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs \
 		sed -Ei 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/'
+	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs \
 		sed -Ei 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/'
+	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs \
 		sed -Ei 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/'
+	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs \
 		sed -Ei 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/'
+	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs \
 		sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
 	#
-	# shared (but installs newer node version):
+	# 2. shared (but installs newer node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		nvm install --default $(NODE_VER)
 	#
-	# shared:
+	# 3. shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
 	#
-	# grunt shared (but here we install grunt earlier, without -g)
+	# 5b. grunt shared (but here we install grunt earlier, without -g)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			grunt@$(GRUNT_VER) \
@@ -191,30 +200,30 @@ angular-translate.tmp: setup
 			karma@$(KARMA_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER)
 	#
-	# shared:
+	# 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 	#
-	# not shared, but maybe could be shared:
+	# 7. not shared, but maybe could be shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
 	#
-	# shared, but no -g:
+	# 8. shared, but no -g:
 	# install version 1.3.12
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER)
 	#
-	# not shared (but perhaps it could be):
+	# 10. shared:
 	# without the version number, 1.5.0 would be installed
 	# moving this up breaks the build
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER)
 	#
-	# shared, but uses local install:
+	# 11. shared, but uses local install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/bower install
 	#
-	# shared, but uses local install,uses build:core instead of package:
+	# 12b. shared, but uses local install,uses build:core instead of package:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/grunt build:core
 	#

@@ -122,6 +122,9 @@ angular.tmp: setup
 		npm install
 	#
 	# @TODO TRY ADDING 7.
+	# 7. not shared, but maybe could be shared:
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm shrinkwrap --dev
 	#
 	# @TODO TRY INSTALLING WITHOUT -g
 	# 8. shared, but has -g:

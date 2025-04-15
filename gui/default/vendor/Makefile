@@ -98,7 +98,7 @@ angular.tmp: setup
 	$(call common,$@)
 	# not needed, but it makes sense:
 	# sed -i 's|"angular": ">=1.2.26 <=1.5"|"angular": "$(ANGULAR_VER)"' $@/package.json
-
+  #
 	# @TODO TRY MOVING TO common
 	# 2. shared (but installs older node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -121,8 +121,7 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 	#
-	# @TODO TRY ADDING 7.
-	# 7. not shared, but maybe could be shared:
+	# 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
 	#
@@ -164,7 +163,7 @@ angular.tmp: setup
 angular-translate.tmp: setup
 	$(call checkout,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call common,$@)
-	#
+	# 1. not shared:
 	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs -r \
 		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
@@ -207,7 +206,7 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
 	#
-	# 7. not shared, but maybe could be shared:
+	# 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
 	#

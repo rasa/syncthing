@@ -26,11 +26,11 @@ GRUNT_CLI_VER ?= 0.1.13
 TOUCH_COOKIE_VER ?= 0.12.1
 
 # angular 1.3.20 versions:
-ANGULAR_NODE_VER ?= 0.10.48
+A_NODE_VER ?= 0.10.48
 REQUEST_VER ?= 2.51.0
 
 # angular-translate 2.9.0's versions:
-NODE_VER ?= 4.2.6
+B_NODE_VER ?= 4.2.6
 GRUNT_EXPRESS_VER ?= 0.2.1
 GRUNT_KARMA_VER ?= 0.8.3
 KARMA_VER ?= 0.12.31
@@ -98,7 +98,7 @@ angular.tmp: setup
 	# @TODO TRY MOVING TO common
 	# 2. shared (but installs older node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm install --default $(ANGULAR_NODE_VER)
+		nvm install --default $(A_NODE_VER)
 	#
 	# @TODO TRY MOVING TO common
 	# 3. shared:
@@ -112,10 +112,18 @@ angular.tmp: setup
 			request@$(REQUEST_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER)
 	#
+	# 5c. unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm cache clean
+	#
 	# @TODO TRY MOVING TO common2
 	# 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
+	#
+	# 6b. unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm dedup
 	#
 	# 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -123,7 +131,7 @@ angular.tmp: setup
 	#
 	# 8. shared, but has -g:
 	# this installs version 1.8.3, as
-	# build breaks when pinned to 1.3.12
+	# BUILD BREAKS if bower@1.3.2 is installed
 	# also, removing the -g causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
@@ -139,7 +147,6 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER)
 	#
-	# @TODO TRY WITH ./node_modules/.bin/bower
 	# 11. shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		bower install
@@ -179,12 +186,16 @@ angular-translate.tmp: setup
 	#
 	# 2. shared (but installs newer node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm install --default $(NODE_VER)
+		nvm install --default $(B_NODE_VER)
 	#
 	# 3. shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER)
+	#
+	# 4b. unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm cache clean
 	#
 	# @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
 	# 5b. sorta shared (but other installs request, tough-cookie instead)
@@ -196,9 +207,17 @@ angular-translate.tmp: setup
 			karma@$(KARMA_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER)
 	#
+	# 5c. unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm cache clean
+	#
 	# 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
+	#
+	# 6b. unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm dedup
 	#
 	# 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -206,15 +225,16 @@ angular-translate.tmp: setup
 	#
 	# @TODO TRY INSTALLED WITH -g
 	# 8. shared, but no -g:
-	# install version 1.3.12
+	# without the version number, 1.8.3 would be installed
+	# BUILD BREAKS when you add -g as this causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER)
 	#
 	# 10. shared:
 	# without the version number, 1.5.0 would be installed
-	# moving this up breaks the build
+	# BUILD BREAKS when this is moved up to step 5b.
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER)
+		npm install -g grunt-cli@$(GRUNT_CLI_VER)
 	#
 	# 11. shared, but uses local install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -222,7 +242,7 @@ angular-translate.tmp: setup
 	#
 	# 12b. shared, but uses local install,uses build:core instead of package:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/grunt build:core
+		grunt build:core
 	#
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE

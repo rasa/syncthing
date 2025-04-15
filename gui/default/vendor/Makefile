@@ -128,9 +128,8 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
 	#
-	# @TODO TRY INSTALLING WITHOUT -g
 	# grunt shared (but here we install grunt later, with -g)
-	# 9. not shared, but has -g:
+	# 9. shared:
 	# without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt@$(GRUNT_VER)
@@ -211,7 +210,6 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER)
 	#
-	# @TODO TRY INSTALLED WITH -g
 	# 10. shared:
 	# without the version number, 1.5.0 would be installed
 	# moving this up breaks the build

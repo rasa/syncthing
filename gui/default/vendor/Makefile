@@ -116,9 +116,9 @@ angular.tmp: setup
 	#
 	# 4a. @TODO TRY INSTALLING INSTEAD:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install request@$(REQUEST_VER)
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install tough-cookie@$(TOUCH_COOKIE_VER)
+		npm install \
+			request@$(REQUEST_VER) \
+			tough-cookie@$(TOUCH_COOKIE_VER)
 	#
 	# 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

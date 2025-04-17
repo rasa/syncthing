@@ -98,7 +98,8 @@ angular.tmp: setup
 	# @TODO TRY MOVING TO common
 	# 2. shared (but installs older node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm install --default $(A_NODE_VER)
+		nvm ls | grep -q $(A_NODE_VER) || \
+			nvm install --default $(A_NODE_VER)
 	#
 	# @TODO TRY MOVING TO common
 	# 3. shared:
@@ -186,7 +187,8 @@ angular-translate.tmp: setup
 	#
 	# 2. shared (but installs newer node version):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm install --default $(B_NODE_VER)
+		nvm ls | grep -q $(B_NODE_VER) || \
+			nvm install --default $(B_NODE_VER)
 	#
 	# 3. shared:
 	# fix: npm ERR! cb() never called!

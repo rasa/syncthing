@@ -177,11 +177,11 @@ angular.tmp: setup
 	#
 	# 11. shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		bower install
+		bower install --quiet
 	#
 	# 12a. shared (but uses package instead of build:core):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/grunt package
+		./node_modules/.bin/grunt package --quiet
 	#
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
@@ -267,11 +267,11 @@ angular-translate.tmp: setup
 	#
 	# 11. shared, but uses local install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/bower install
+		./node_modules/.bin/bower install --quiet
 	#
 	# 12b. shared, but uses local install,uses build:core instead of package:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		grunt build:core
+		grunt build:core --quiet
 	#
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE

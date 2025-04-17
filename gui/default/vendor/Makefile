@@ -10,6 +10,8 @@ ANGULAR_VER ?= v1.3.20
 ANGULAR_TRANSLATE_VER ?= 2.9.0
 ANGULAR_TRANSLATE_LOADER_VER ?= 2.11.0
 ANGULAR_UTILS_VER ?= 759009c
+# It's v3.3.6, per
+# https://github.com/syncthing/syncthing/commit/c6881b6d02b31ef00190ae0de9e2fba5cec8a7aa
 BOOTSTRAP_VER ?= v3.3.6
 FANCYTREE_VER ?= v2.38.0
 JQUERY_VER ?= 2.2.2
@@ -35,7 +37,11 @@ GRUNT_EXPRESS_VER ?= 0.2.1
 GRUNT_KARMA_VER ?= 0.8.3
 KARMA_VER ?= 0.12.31
 
-NVM_DIR := $(shell [ -n "$${XDG_CONFIG_HOME}" ] && printf %s "$${XDG_CONFIG_HOME}/nvm" || printf %s "$${HOME}/.nvm")
+ifeq (, $(XDG_CONFIG_HOME))
+	$(error "XDG_CONFIG_HOME is not defined")
+endif
+
+NVM_DIR := $(shell printf %s "$${XDG_CONFIG_HOME}/nvm")
 
 PYTHON := $(shell which python2.7)
 
@@ -56,6 +62,9 @@ DIRS = angular.tmp \
 $(NVM_DIR)/nvm.sh:
 	test -f "$@" || \
 		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$(NVM_VER)/install.sh | bash
+
+PHONY+=install_nvm
+install_nvm: $(NVM_DIR)/nvm.sh ## Install latest nvm
 
 # GitHub doesn't support git:// URLs any more
 .git_configured:
@@ -89,6 +98,24 @@ define common
 		sed -i 's/"~/"/; s/"^/"/;'
 endef
 
+PHONY+=install_node
+install_node: install_nvm ## Install node using the NODE_VER variable
+	test -n "$(NODE_VER)"
+	. $(NVM_DIR)/nvm.sh && \
+		nvm ls | grep -q $(NODE_VER) || \
+			nvm install --default $(NODE_VER)
+
+PHONY+=uninstall_all
+uninstall_all: ## Uninstall nvm and all node versions by wiping NVM_DIR, ~/.npm, etc.
+	test -n "$(NVM_DIR)"
+	-rm -fr "$(NVM_DIR)/.cache"
+	-rm -fr "$(NVM_DIR)/*"
+	-rm -fr "$${HOME}/.config/configstore"
+	-rm -fr "$${HOME}/.node-gyp"
+	-rm -fr "$${HOME}/.npm"
+	-rm -fr "$${HOME}/.nvmrc"
+	-sed -i '/nvm/d; /NVM/d;' "$${HOME}/.bashrc"
+
 angular.tmp: setup
 	$(call checkout,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call common,$@)
@@ -97,9 +124,9 @@ angular.tmp: setup
     #
 	# @TODO TRY MOVING TO common
 	# 2. shared (but installs older node version):
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm ls | grep -q $(A_NODE_VER) || \
-			nvm install --default $(A_NODE_VER)
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	nvm ls | grep -q $(A_NODE_VER) || \
+	# 		nvm install --default $(A_NODE_VER)
 	#
 	# @TODO TRY MOVING TO common
 	# 3. shared:
@@ -186,9 +213,9 @@ angular-translate.tmp: setup
 		sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
 	#
 	# 2. shared (but installs newer node version):
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		nvm ls | grep -q $(B_NODE_VER) || \
-			nvm install --default $(B_NODE_VER)
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	nvm ls | grep -q $(B_NODE_VER) || \
+	# 		nvm install --default $(B_NODE_VER)
 	#
 	# 3. shared:
 	# fix: npm ERR! cb() never called!
@@ -322,9 +349,6 @@ help: ## Display a help screen
 	@printf '$(fmt)' 'Target' 'Description'
 	@printf '$(fmt)' '------' '------------------------------------------'
 	@awk -F ':.*##[ \t]*' '/^[^#: \t]+:.*##/ {printf "$(fmt)", $$1, $$2}' $(MAKEFILE_LIST) | sort
-
-PHONY+=nvm
-nvm: $(NVM_DIR)/nvm.sh
 
 PHONY+=angular
 angular: angular.tmp ## Upgrade angular

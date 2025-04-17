@@ -117,18 +117,13 @@ install_node: install_nvm ## Install node using the NODE_VER variable
 	. $(NVM_DIR)/nvm.sh && \
 		nvm ls | grep -q $(NODE_VER) || \
 			nvm install --default $(NODE_VER)
-
-# @TODO REMOVE ME:
-# 2. shared (but installs older node version):
-# cd $@ && . $(NVM_DIR)/nvm.sh && \
-# 	nvm ls | grep -q $(A_NODE_VER) || \
-# 		nvm install --default $(A_NODE_VER)
-#
+	. $(NVM_DIR)/nvm.sh && \
+		nvm alias default $(NODE_VER)
 
 angular.tmp: setup
-	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
 	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call setup,$@)
+	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
 	# not needed, but it makes sense:
 	# sed -i 's|"angular": ">=1.2.26 <=1.5"|"angular": "$(ANGULAR_VER)"' $@/package.json
     #
@@ -193,39 +188,21 @@ angular.tmp: setup
 	-cp -pv $@/LICENSE angular/angular-sanitize.js.LICENSE
 	$(call fini,$@,angular)
 
-# @TODO REMOVE ME:
-# 2. shared (but installs newer node version):
-# cd $@ && . $(NVM_DIR)/nvm.sh && \
-# 	nvm ls | grep -q $(B_NODE_VER) || \
-# 		nvm install --default $(B_NODE_VER)
-#
-
 angular-translate.tmp: setup
-	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call setup,$@)
+	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
 	# 1. not shared:
 	# @TODO TRY SHARING:
 	# @TODO TRY REMOVING:
-	# @TODO TRY CREATING ONE SED SCRIPT:
 	find $@ -type f -name package.json | xargs -r \
-		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
-	# @TODO TRY REMOVING:
-	find $@ -type f -name package.json | xargs \
-		sed -Ei 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/'
-	# @TODO TRY REMOVING:
-	find $@ -type f -name package.json | xargs \
-		sed -Ei 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/'
-	# @TODO TRY REMOVING:
-	find $@ -type f -name package.json | xargs \
-		sed -Ei 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/'
-	# @TODO TRY REMOVING:
-	find $@ -type f -name package.json | xargs \
-		sed -Ei 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/'
-	# @TODO TRY REMOVING:
-	find $@ -type f -name package.json | xargs \
-		sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
-	#
+		sed -E -i \
+			-e 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/' \
+			-e 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/' \
+			-e 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/' \
+			-e 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/' \
+			-e 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/' \
+			-e 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
 	# 3. shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

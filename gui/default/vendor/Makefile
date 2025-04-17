@@ -50,7 +50,8 @@ ifeq (, $(PYTHON))
 	$(error "To install on Ubuntu 23.10+, run: make -f python2.mak install")
 endif
 
-DIRS = angular.tmp \
+DIRS = \
+	angular.tmp \
 	angular-translate.tmp \
 	angular-translate-loader.tmp \
 	angularUtils.tmp \
@@ -59,25 +60,10 @@ DIRS = angular.tmp \
 	jquery.tmp \
 	moment.tmp
 
-$(NVM_DIR)/nvm.sh:
-	test -f "$@" || \
-		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$(NVM_VER)/install.sh | bash
-
-PHONY+=install_nvm
-install_nvm: $(NVM_DIR)/nvm.sh ## Install latest nvm
-
-# GitHub doesn't support git:// URLs any more
-.git_configured:
-	git config --global url."https://github.com/".insteadOf git://github.com/
-	touch $@
-
-PHONY+=setup
-setup: $(NVM_DIR)/nvm.sh .git_configured ## install nvm, and configure git
-
 # $1 dir
 # $2 url
 # $3 tag
-define checkout
+define init
 	test -d $1 || git clone -q $2 $1
 	# git reset --hard
 	# git clean -fdx
@@ -86,7 +72,7 @@ define checkout
 endef
 
 # $1 dir
-define common
+define setup
 	# Stop bower from saying:
 	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
 	printf '{"interactive": false}' >$@/.bowerrc
@@ -98,6 +84,33 @@ define common
 		sed -i 's/"~/"/; s/"^/"/;'
 endef
 
+# $1 dir.tmp
+# $2 dest_dir
+define fini
+    cd "$1" && \
+        git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call basename,$1)-tags.txt"
+	cd "$2" && \
+        git diff -uw . >"../$(call basename,$1).diff"
+	cd "$2" && \
+        git stash push -m "$(call basename,$1)" .
+	-touch $1
+endef
+
+$(NVM_DIR)/nvm.sh:
+	test -f "$@" || \
+		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$(NVM_VER)/install.sh | bash
+
+PHONY+=install_nvm
+install_nvm: $(NVM_DIR)/nvm.sh ## Install the latest nvm
+
+# GitHub doesn't support git:// URLs any more
+.git_configured:
+	git config --global url."https://github.com/".insteadOf git://github.com/
+	touch $@
+
+PHONY+=setup
+setup: $(NVM_DIR)/nvm.sh .git_configured ## install the latest nvm, configure git to rewrite git:// URLs
+
 PHONY+=install_node
 install_node: install_nvm ## Install node using the NODE_VER variable
 	test -n "$(NODE_VER)"
@@ -105,30 +118,21 @@ install_node: install_nvm ## Install node using the NODE_VER variable
 		nvm ls | grep -q $(NODE_VER) || \
 			nvm install --default $(NODE_VER)
 
-PHONY+=uninstall_all
-uninstall_all: ## Uninstall nvm and all node versions by wiping NVM_DIR, ~/.npm, etc.
-	test -n "$(NVM_DIR)"
-	-rm -fr "$(NVM_DIR)/.cache"
-	-rm -fr "$(NVM_DIR)/*"
-	-rm -fr "$${HOME}/.config/configstore"
-	-rm -fr "$${HOME}/.node-gyp"
-	-rm -fr "$${HOME}/.npm"
-	-rm -fr "$${HOME}/.nvmrc"
-	-sed -i '/nvm/d; /NVM/d;' "$${HOME}/.bashrc"
+# @TODO REMOVE ME:
+# 2. shared (but installs older node version):
+# cd $@ && . $(NVM_DIR)/nvm.sh && \
+# 	nvm ls | grep -q $(A_NODE_VER) || \
+# 		nvm install --default $(A_NODE_VER)
+#
 
 angular.tmp: setup
-	$(call checkout,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
-	$(call common,$@)
+	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
+	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
+	$(call setup,$@)
 	# not needed, but it makes sense:
 	# sed -i 's|"angular": ">=1.2.26 <=1.5"|"angular": "$(ANGULAR_VER)"' $@/package.json
     #
-	# @TODO TRY MOVING TO common
-	# 2. shared (but installs older node version):
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	nvm ls | grep -q $(A_NODE_VER) || \
-	# 		nvm install --default $(A_NODE_VER)
-	#
-	# @TODO TRY MOVING TO common
+	# @TODO TRY MOVING TO setup
 	# 3. shared:
 	# fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -140,11 +144,11 @@ angular.tmp: setup
 			request@$(REQUEST_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER)
 	#
+	# @TODO TRY MOVING 5c, 6, 6b and 7 TO common2
 	# 5c. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
 	#
-	# @TODO TRY MOVING TO common2
 	# 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
@@ -187,13 +191,23 @@ angular.tmp: setup
 	cp -pv $@/build/angular-sanitize.js angular
 	-cp -pv $@/LICENSE angular/angular.js.LICENSE
 	-cp -pv $@/LICENSE angular/angular-sanitize.js.LICENSE
-	touch $@
+	$(call fini,$@,angular)
+
+# @TODO REMOVE ME:
+# 2. shared (but installs newer node version):
+# cd $@ && . $(NVM_DIR)/nvm.sh && \
+# 	nvm ls | grep -q $(B_NODE_VER) || \
+# 		nvm install --default $(B_NODE_VER)
+#
 
 angular-translate.tmp: setup
-	$(call checkout,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
-	$(call common,$@)
+	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
+	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
+	$(call setup,$@)
 	# 1. not shared:
+	# @TODO TRY SHARING:
 	# @TODO TRY REMOVING:
+	# @TODO TRY CREATING ONE SED SCRIPT:
 	find $@ -type f -name package.json | xargs -r \
 		sed -Ei 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/'
 	# @TODO TRY REMOVING:
@@ -211,11 +225,6 @@ angular-translate.tmp: setup
 	# @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs \
 		sed -Ei 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
-	#
-	# 2. shared (but installs newer node version):
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	nvm ls | grep -q $(B_NODE_VER) || \
-	# 		nvm install --default $(B_NODE_VER)
 	#
 	# 3. shared:
 	# fix: npm ERR! cb() never called!
@@ -275,53 +284,53 @@ angular-translate.tmp: setup
 	#
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE
-	touch $@
+	$(call fini,$@,angular)
 
 angular-translate-loader.tmp:
-	$(call checkout,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
+	$(call init,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
 	cp -pv $@/angular-translate-loader-static-files.js angular
 	# see https://github.com/angular-translate/bower-angular-translate-loader-static-files?tab=readme-ov-file#license
 	-cp -pv angular/angular-translate.js.LICENSE angular/angular-translate-loader-static-files.js.LICENSE
-	touch $@
+	$(call fini,$@,angular)
 
 angularUtils.tmp:
-	$(call checkout,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER))
+	$(call init,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER))
 	cp -pv $@/src/directives/pagination/dirPagination.js angular/angular-dirPagination.js
 	-cp -pv $@/license.txt angular/angular-dirPagination.js.LICENSE
-	touch $@
+	$(call fini,$@,angular)
 
 bootstrap.tmp:
-	$(call checkout,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
+	$(call init,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
 	cp -pv $@/dist/css/bootstrap.css       bootstrap/css
 	cp -pv $@/dist/css/bootstrap-theme.css bootstrap/css
 	cp -pv $@/dist/js/bootstrap.js         bootstrap/js
 	-cp -pv $@/LICENSE                      bootstrap/LICENSE
-	touch $@
+	$(call fini,$@,bootstrap)
 
 fancytree.tmp:
-	$(call checkout,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
+	$(call init,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
 	cd $@/dist && \
 		patch --batch --ignore-whitespace --strip=5 < ../../8509.patch
 	cd $@/dist && \
 		patch --batch --ignore-whitespace  --strip=1 < ../../f085361.patch
 	cp -pv $@/dist/jquery.fancytree-all-deps.js fancytree
 	-cp -pv $@/dist/LICENSE.txt fancytree
-	touch $@
+	$(call fini,$@,fancytree)
 
 jquery.tmp:
-	$(call checkout,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
+	$(call init,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
 	cp -pv $@/dist/jquery.js jquery/jquery-$(JQUERY_VER).js
 	-cp -pv $@/LICENSE.txt    jquery/LICENSE
-	touch $@
+	$(call fini,$@,jquery)
 
 moment.tmp:
-	$(call checkout,$@,https://github.com/moment/moment,$(MOMENT_VER))
+	$(call init,$@,https://github.com/moment/moment,$(MOMENT_VER))
 	cp -pv $@/moment.js moment
 	-cp -pv $@/LICENSE   moment
-	touch $@
+	$(call fini,$@,moment)
 
 PHONY+=all
-all: checkout_lfs download checkout_asis ## Run `make checkout_lfs download checkout_asis`
+all: checkout_lfs build checkout_asis ## Run `make checkout_lfs build checkout_asis`
 
 PHONY+=checkout_lfs
 checkout_lfs: ## Set git to checkout all text files with LF line endings (Windows only)
@@ -335,20 +344,8 @@ ifeq ($(OS),Windows_NT)
 	git restore ../../../.gitattributes
 endif
 
-PHONY+=download
-download: $(DIRS) ## Download all the files
-
-PHONY+=clean
-clean: ## Clean only the .tmp directories
-	find -maxdepth 1 -type d -name "*.tmp" | xargs rm -fr
-	rm -fr *.deb
-
-fmt=\033[36m%-24s\033[0m %s\n
-PHONY+=help
-help: ## Display a help screen
-	@printf '$(fmt)' 'Target' 'Description'
-	@printf '$(fmt)' '------' '------------------------------------------'
-	@awk -F ':.*##[ \t]*' '/^[^#: \t]+:.*##/ {printf "$(fmt)", $$1, $$2}' $(MAKEFILE_LIST) | sort
+PHONY+=build
+build: $(DIRS) ## Build all the vendored repositories
 
 PHONY+=angular
 angular: angular.tmp ## Upgrade angular
@@ -373,5 +370,33 @@ jquery: jquery.tmp ## Upgrade jquery
 
 PHONY+=moment
 moment: moment.tmp ## Upgrade moment
+
+PHONY+=clean
+clean: ## Clean just the .tmp directories, and downloaded .deb files
+	find -maxdepth 1 -type d -name "*.tmp" | xargs rm -fr
+	rm -fr *.deb
+
+PHONY+=nuke
+nuke: clean ## Clean all downloaded/generated files
+	rm -fr *-tags.txt
+	rm -fr *.diff
+
+PHONY+=uninstall_all
+uninstall_all: ## Uninstall nvm and all node versions by wiping NVM_DIR, ~/.npm, etc.
+	test -n "$(NVM_DIR)"
+	-rm -fr "$(NVM_DIR)/.cache"
+	-rm -fr "$(NVM_DIR)/*"
+	-rm -fr "$${HOME}/.config/configstore"
+	-rm -fr "$${HOME}/.node-gyp"
+	-rm -fr "$${HOME}/.npm"
+	-rm -fr "$${HOME}/.nvmrc"
+	-sed -i '/nvm/d; /NVM/d;' "$${HOME}/.bashrc"
+
+fmt=\033[36m%-24s\033[0m %s\n
+PHONY+=help
+help: ## Display a help screen
+	@printf '$(fmt)' 'Target' 'Description'
+	@printf '$(fmt)' '------' '------------------------------------------'
+	@awk -F ':.*##[ \t]*' '/^[^#: \t]+:.*##/ {printf "$(fmt)", $$1, $$2}' $(MAKEFILE_LIST) | sort
 
 .PHONY: $(PHONY)

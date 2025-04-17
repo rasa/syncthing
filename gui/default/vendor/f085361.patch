@@ -1,0 +1,23 @@
+See https://github.com/tomasz1986/syncthing/commit/f085361a3eba6d6d865632d572960a5e7b75fc26#diff-cd84434b22af5511a55fac66ee28f9daeda01a012b0d0a3b9ce6feaa53e1dc6d
+
+gui: Fix a fancytree bug that breaks childcounters in IE11
+The issue has been reported on the fancytree issue tracker on GitHub
+under [1], but there is no fix available at the moment. Thus, apply our
+own workaround for now, so that child counters work properly in IE11.
+
+[1] mar10/fancytree#1081
+
+Signed-off-by: Tomasz Wilczyński <twilczynski@naver.com>
+
+--- a/jquery.fancytree-all-deps.js
++++ b/jquery.fancytree-all-deps.js
+@@ -11775,7 +11775,8 @@
+ 		// }
+ 		if (typeof icon === "string") {
+ 			// #883: remove inner html that may be added by prev. mode
+-			span.innerHTML = "";
++			// #1081: keep inner html to fix childcounter issues in IE11
++			// span.innerHTML = "";
+ 			$span.attr("class", setClass + " " + icon).append($counter);
+ 		} else if (icon) {
+ 			if (icon.text) {

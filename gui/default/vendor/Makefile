@@ -73,6 +73,7 @@ endef
 
 # $1 dir
 define setup
+	@: # @TODO REMOVE DEBUGGING STATEMENTS:
 	@echo XDG_CONFIG_HOME=$(XDG_CONFIG_HOME)
 	@echo NVM_DIR=$(NVM_DIR)
 	@:
@@ -94,7 +95,7 @@ define setup
 	@:
 	@: # fix: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g npm@$(NPM_VER)
+		npm install -g npm@$(NPM_VER) --silent
 endef
 
 # $1 dir.tmp
@@ -153,7 +154,8 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			request@$(REQUEST_VER) \
-			tough-cookie@$(TOUCH_COOKIE_VER)
+			tough-cookie@$(TOUCH_COOKIE_VER) \
+			--silent
 	@:
 	@: # @TODO TRY MOVING 5c, 6, 6b and 7 TO shared
 	@: # 5c. unneeded, but it can't hurt
@@ -162,7 +164,7 @@ angular.tmp: setup
 	@:
 	@: # 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install
+		npm install --silent
 	@:
 	@: # 6b. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -177,18 +179,18 @@ angular.tmp: setup
 	@: # BUILD BREAKS if bower@1.3.2 is installed
 	@: # also, removing the -g causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g bower
+		npm install -g bower --silent
 	@:
 	@: # grunt shared (but here we install grunt later, with -g)
 	@: # 9. shared:
 	@: # without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER)
+		npm install grunt@$(GRUNT_VER) --silent
 	@:
 	@: # 10. shared:
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER)
+		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
 	@: # 11. shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -232,7 +234,8 @@ angular-translate.tmp: setup
 			grunt-express@$(GRUNT_EXPRESS_VER) \
 			grunt-karma@$(GRUNT_KARMA_VER) \
 			karma@$(KARMA_VER) \
-			tough-cookie@$(TOUCH_COOKIE_VER)
+			tough-cookie@$(TOUCH_COOKIE_VER) \
+			--silent
 	@:
 	@: # 5c. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -240,7 +243,7 @@ angular-translate.tmp: setup
 	@:
 	@: # 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install
+		npm install --silent
 	@:
 	@: # 6b. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -255,13 +258,13 @@ angular-translate.tmp: setup
 	@: # without the version number, 1.8.3 would be installed
 	@: # BUILD BREAKS when you add -g as this causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER)
+		npm install bower@$(BOWER_VER) --silent
 	@:
 	@: # 10. shared:
 	@: # without the version number, 1.5.0 would be installed
 	@: # BUILD BREAKS when this is moved up to step 5b.
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g grunt-cli@$(GRUNT_CLI_VER)
+		npm install -g grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
 	@: # 11. shared, but uses local install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -367,19 +370,20 @@ clean: ## Clean just the .tmp directories, and downloaded .deb files
 
 PHONY+=nuke
 nuke: clean ## Clean all downloaded/generated files
-	rm -fr *-tags.txt
-	rm -fr *.diff
+	-rm -fr *-tags.txt
+	-rm -fr *.diff
 
 PHONY+=uninstall_all
 uninstall_all: ## Uninstall nvm and all node versions by wiping NVM_DIR, ~/.npm, etc.
 	test -n "$(NVM_DIR)"
-	-rm -fr "$(NVM_DIR)/.cache"
-	-rm -fr "$(NVM_DIR)/*"
-	-rm -fr "$${HOME}/.config/configstore"
-	-rm -fr "$${HOME}/.node-gyp"
-	-rm -fr "$${HOME}/.npm"
-	-rm -fr "$${HOME}/.nvmrc"
 	-sed -i '/nvm/d; /NVM/d;' "$${HOME}/.bashrc"
+	-find \
+		"$(NVM_DIR)" \
+		"$${HOME}/.config/configstore" \
+		"$${HOME}/.node-gyp" \
+		"$${HOME}/.npm" \
+		"$${HOME}/.nvmrc" \
+		-mindepth 1 -depth -exec rm -rfv -- {} + 2>/dev/null
 
 fmt=\033[36m%-24s\033[0m %s\n
 PHONY+=help

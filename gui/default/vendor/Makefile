@@ -111,6 +111,19 @@ define setup
 			request@$(REQUEST_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER) \
 			--silent
+	# @: # 4b. unneeded, but it can't hurt
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm cache clean
+	@:
+	@: # @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
+	@: # 5b. sorta shared (but other installs request, tough-cookie instead)
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install \
+			grunt@$(GRUNT_VER) \
+			grunt-express@$(GRUNT_EXPRESS_VER) \
+			grunt-karma@$(GRUNT_KARMA_VER) \
+			karma@$(KARMA_VER) \
+			--silent
 endef
 
 # $1 dir.tmp
@@ -165,6 +178,9 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm dedup
 	@:
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm prune
+	@:
 	@: # 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
@@ -205,22 +221,6 @@ angular-translate.tmp: setup
 	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call setup,$@)
-	@:
-	@: # 4b. unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm cache clean
-	@:
-	@: # @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
-	@: # 5b. sorta shared (but other installs request, tough-cookie instead)
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install \
-			grunt@$(GRUNT_VER) \
-			grunt-express@$(GRUNT_EXPRESS_VER) \
-			grunt-karma@$(GRUNT_KARMA_VER) \
-			karma@$(KARMA_VER) \
-			tough-cookie@$(TOUCH_COOKIE_VER) \
-			--silent
-	@:
 	@: # 5c. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean

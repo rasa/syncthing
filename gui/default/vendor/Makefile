@@ -73,10 +73,6 @@ endef
 
 # $1 dir
 define setup
-	@: # @TODO REMOVE DEBUGGING STATEMENTS:
-	@echo XDG_CONFIG_HOME=$(XDG_CONFIG_HOME)
-	@echo NVM_DIR=$(NVM_DIR)
-	@:
 	@: # Stop bower from saying:
 	@: #  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
 	printf '{"interactive": false}' >$@/.bowerrc
@@ -89,13 +85,24 @@ define setup
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
 		sed -i 's/"~/"/; s/"^/"/;'
 	@:
+	@: # Stop pulling in ES6 code:
 	sed -i '/karma-phantomjs-launcher/d' $@/package.json
 	@:
+	@: # Pin angular version (not required, but it can't hurt):
 	sed -E -i 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/' $@/package.json
 	@:
-	@: # fix: npm ERR! cb() never called!
+	@: # Fix ES6 error: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER) --silent
+	@:
+	find $@ -type f -name package.json | xargs -r \
+		sed -E -i \
+			-e 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/' \
+			-e 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/' \
+			-e 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/' \
+			-e 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/' \
+			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/' \
+			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
 endef
 
 # $1 dir.tmp
@@ -123,20 +130,7 @@ install_nvm: $(NVM_DIR)/nvm.sh ## Install the latest nvm
 	touch $@
 
 PHONY+=setup
-setup: $(NVM_DIR)/nvm.sh .git_configured ## install the latest nvm, configure git to rewrite git:// URLs
-
-# @TODO REMOVE COMMENTS:
-#		nvm ls | grep -q $(NODE_VER) || \
-
-# @echo NVM_DIR=$(NVM_DIR)
-# -type -t nvm
-# -type -p nvm
-# -. $(NVM_DIR)/nvm.sh && \
-# 	type -t nvm
-# -. $(NVM_DIR)/nvm.sh && \
-# 	type -p nvm
-# @. $(NVM_DIR)/nvm.sh && \
-# 	echo NVM_DIR=$(NVM_DIR)
+setup: $(NVM_DIR)/nvm.sh .git_map_git_urls ## install the latest nvm, configure git to rewrite git:// URLs
 
 PHONY+=install_node
 install_node: install_nvm ## Install node using the NODE_VER variable
@@ -210,17 +204,6 @@ angular-translate.tmp: setup
 	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call setup,$@)
-	@: # 1. not shared:
-	@: # @TODO TRY SHARING:
-	@: # @TODO TRY REMOVING:
-	find $@ -type f -name package.json | xargs -r \
-		sed -E -i \
-			-e 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/' \
-			-e 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/' \
-			-e 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/' \
-			-e 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/' \
-			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/' \
-			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
 	@:
 	@: # 4b. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

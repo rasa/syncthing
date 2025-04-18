@@ -140,9 +140,17 @@ endef
 
 # $1 grunt command
 define build
+	@: # unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm cache clean
+	@:
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
+	@:
+	@: # unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm cache clean
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		PATH="./node_modules/.bin/:$${PATH}" \
@@ -199,7 +207,7 @@ angular.tmp: setup
 	@: # BREAKS BUILD if bower@1.3.2 is installed
 	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g bower --silent
+		npm install -g bower@$(BOWER_VER) --silent
 	@:
 	$(call build,package)
 	@:

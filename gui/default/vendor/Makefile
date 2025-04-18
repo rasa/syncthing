@@ -140,6 +140,13 @@ endef
 
 # $1 grunt command
 define build
+	@: # @TODO TEST IF REMOVING -g BREAKS THINGS
+	@: # this installs version 1.8.3
+	@: # BREAKS BUILD if bower@1.3.2 is installed
+	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install -g bower@$(BOWER_VER) --silent
+	@:
 	@: # unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
@@ -206,8 +213,8 @@ angular.tmp: setup
 	@: # this installs version 1.8.3
 	@: # BREAKS BUILD if bower@1.3.2 is installed
 	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g bower@$(BOWER_VER) --silent
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install -g bower@$(BOWER_VER) --silent
 	@:
 	$(call build,package)
 	@:
@@ -226,8 +233,8 @@ angular-translate.tmp: setup
 	@:
 	@: # without the version number, 1.8.3 would be installed
 	@: # BREAKS BUILD if -g is added, as tough-cookie 5.1.2 gets installed
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g bower@$(BOWER_VER) --silent
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install -g bower@$(BOWER_VER) --silent
 	@:
 	$(call build,build:core)
 	@:

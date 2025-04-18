@@ -105,15 +105,12 @@ define setup
 			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/' \
 			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
 	@:
-	@: # Fails if moved to shared
+	@: # @TODO TRY MERGING THESE TWO INSTALLS:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			request@$(REQUEST_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER) \
 			--silent
-	# @: # 4b. unneeded, but it can't hurt
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm cache clean
 	@:
 	@: # @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
 	@: # 5b. sorta shared (but other installs request, tough-cookie instead)
@@ -124,6 +121,24 @@ define setup
 			grunt-karma@$(GRUNT_KARMA_VER) \
 			karma@$(KARMA_VER) \
 			--silent
+	@:
+	@: # unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm cache clean
+	@:
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install --silent
+	@:
+	@: # unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm dedup
+	@:
+	@: # needed, since shared installs everything
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm prune
+	@:
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm shrinkwrap --dev
 endef
 
 # $1 dir.tmp
@@ -165,39 +180,22 @@ angular.tmp: setup
 	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
 	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call setup,$@)
-	@: # @TODO TRY MOVING 5c, 6, 6b and 7 TO shared
-	@: # 5c. unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm cache clean
-	@:
-	@: # 6. shared:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install --silent
-	@:
-	@: # 6b. unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm dedup
-	@:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm prune
-	@:
-	@: # 7. shared:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm shrinkwrap --dev
 	@:
 	@: # 8. shared, but has -g:
 	@: # this installs version 1.8.3, as
-	@: # BUILD BREAKS if bower@1.3.2 is installed
-	@: # also, removing the -g causes tough-cookie 5.1.2 to be installed
+	@: # BREAKS BUILD if bower@1.3.2 is installed
+	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower --silent
 	@:
+	@: # @TODO TRY REMOVING AS WE HAVE ALREADY INSTALLED IT IN SHARED:
 	@: # grunt shared (but here we install grunt later, with -g)
 	@: # 9. shared:
 	@: # without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt@$(GRUNT_VER) --silent
 	@:
+	@: # @TODO TRY INSTALLING IN SHARED
 	@: # 10. shared:
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -221,35 +219,15 @@ angular-translate.tmp: setup
 	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call setup,$@)
-	@: # 5c. unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm cache clean
-	@:
-	@: # 6. shared:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install --silent
-	@:
-	@: # 6b. unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm dedup
-	@: 
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm prune
-	@:
-	@: # 7. shared:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm shrinkwrap --dev
-	@:
-	@: # @TODO TRY INSTALLED WITH -g
 	@: # 8. shared, but no -g:
 	@: # without the version number, 1.8.3 would be installed
-	@: # BUILD BREAKS when you add -g as this causes tough-cookie 5.1.2 to be installed
+	@: # BREAKS BUILD when you add -g as this causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER) --silent
 	@:
 	@: # 10. shared:
 	@: # without the version number, 1.5.0 would be installed
-	@: # BUILD BREAKS when this is moved up to step 5b.
+	@: # BREAKS BUILD when this is moved up to step 5b.
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:

@@ -70,39 +70,36 @@ define init
 		git checkout -q $2
 endef
 
+	# @:
+	# @: # pin all package versions
+	# @:
+	# @: # Stop pulling in ES6 code:
+	# Pin angular version (not required, but it can't hurt):
+	# @: # Pin versions (only angular-translate target needs this):
+
 # $1 grunt command
 define build
-	@: # Stop bower from saying:
+	@: # Stop bower from prompting:
 	@: #  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
 	printf '{"interactive": false}' >$@/.bowerrc
 	@:
-	@: # change git: URLs to https: as GitHub dropped support
+	@: # Change git: URLs to https: (Github dropped support for git: URLs in 2022):
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
-		sed -i 's|git://|https://|;'
-	@:
-	@: # pin all package versions
-	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
-		sed -i 's/"~/"/; s/"^/"/;'
-	@:
-	@: # Stop pulling in ES6 code:
-	sed -i '/karma-phantomjs-launcher/d' $@/package.json
-	@:
-	@: # Pin angular version (not required, but it can't hurt):
-	sed -E -i 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/' $@/package.json
+		sed -E -i \
+			-e 's|git://|https://|;' \
+			-e 's/"~/"/; s/"^/"/;' \
+			-e '/karma-phantomjs-launcher/d;' \
+			-e 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/;' \
+			-e 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/;' \
+			-e 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/;' \
+			-e 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/;' \
+			-e 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/;' \
+			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/;' \
+			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;'
 	@:
 	@: # Fix ES6 error: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER) --silent
-	@:
-	@: # Pin versions (only angular-translate target needs this):
-	find $@ -type f -name package.json | xargs -r \
-		sed -E -i \
-			-e 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/' \
-			-e 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/' \
-			-e 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/' \
-			-e 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/' \
-			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/' \
-			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
@@ -132,25 +129,13 @@ define build
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
 	@:
-	@: # probably unneeded, but it can't hurt
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm cache clean
-	@:
 	@: # without the version number, 1.8.3 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower@$(BOWER_VER) --silent
 	@:
-	@: # probably unneeded, but it can't hurt
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm cache clean
-	@:
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
-	@:
-	@: # probably unneeded, but it can't hurt
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm cache clean
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		PATH="./node_modules/.bin/:$${PATH}" \

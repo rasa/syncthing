@@ -95,6 +95,7 @@ define setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g npm@$(NPM_VER) --silent
 	@:
+	@: # Pin versions (only angular-translate target needs this):
 	find $@ -type f -name package.json | xargs -r \
 		sed -E -i \
 			-e 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/' \
@@ -103,6 +104,13 @@ define setup
 			-e 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/' \
 			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/' \
 			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
+	@:
+	@: # Fails if moved to shared
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install \
+			request@$(REQUEST_VER) \
+			tough-cookie@$(TOUCH_COOKIE_VER) \
+			--silent
 endef
 
 # $1 dir.tmp
@@ -144,13 +152,6 @@ angular.tmp: setup
 	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
 	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call setup,$@)
-	@: # 4a. sort shared (installs grunt, grunt-express, grunt-karma, karma, tough-cookie instead)
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install \
-			request@$(REQUEST_VER) \
-			tough-cookie@$(TOUCH_COOKIE_VER) \
-			--silent
-	@:
 	@: # @TODO TRY MOVING 5c, 6, 6b and 7 TO shared
 	@: # 5c. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -232,6 +233,9 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm dedup
 	@: 
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm prune
+	@:
 	@: # 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev

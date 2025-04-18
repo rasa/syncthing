@@ -222,9 +222,7 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER) --silent
 	@:
-	@: # @TODO TRY INSTALLING WITHOUT -g
 	@: # without the version number, 1.5.0 would be installed
-	@: # BREAKS BUILD when this is moved to shared
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:

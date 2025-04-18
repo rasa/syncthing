@@ -1,6 +1,6 @@
 #!/usr/bin/make
 
-# https://patch-diff.githubusercontent.com/raw/syncthing/syncthing/pull/8509.diff
+SHELL := bash
 
 PHONY+=default
 default: help ;
@@ -65,34 +65,47 @@ DIRS = \
 # $3 tag
 define init
 	test -d $1 || git clone -q $2 $1
-	# git reset --hard
-	# git clean -fdx
+	@: # git reset --hard
+	@: # git clean -fdx
 	cd $1 && \
 		git checkout -q $3
 endef
 
 # $1 dir
 define setup
-	# Stop bower from saying:
-	#  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
+	@echo XDG_CONFIG_HOME=$(XDG_CONFIG_HOME)
+	@echo NVM_DIR=$(NVM_DIR)
+	@:
+	@: # Stop bower from saying:
+	@: #  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
 	printf '{"interactive": false}' >$@/.bowerrc
-	# change git: URLs to https: as GitHub dropped support
+	@:
+	@: # change git: URLs to https: as GitHub dropped support
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
 		sed -i 's|git://|https://|;'
-	# pin all package versions
+	@:
+	@: # pin all package versions
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
 		sed -i 's/"~/"/; s/"^/"/;'
+	@:
+	sed -i '/karma-phantomjs-launcher/d' $@/package.json
+	@:
+	sed -E -i 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/' $@/package.json
+	@:
+	@: # fix: npm ERR! cb() never called!
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install -g npm@$(NPM_VER)
 endef
 
 # $1 dir.tmp
 # $2 dest_dir
 define fini
-    cd "$1" && \
-        git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call basename,$1)-tags.txt"
+	cd "$1" && \
+		git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call basename,$1)-tags.txt"
 	cd "$2" && \
-        git diff -uw . >"../$(call basename,$1).diff"
+		git diff -uw . >"../$(call basename,$1).diff"
 	cd "$2" && \
-        git stash push -m "$(call basename,$1)" .
+		git stash push -m "$(call basename,$1)" .
 	-touch $1
 endef
 
@@ -104,84 +117,87 @@ PHONY+=install_nvm
 install_nvm: $(NVM_DIR)/nvm.sh ## Install the latest nvm
 
 # GitHub doesn't support git:// URLs any more
-.git_configured:
+.git_map_git_urls:
 	git config --global url."https://github.com/".insteadOf git://github.com/
 	touch $@
 
 PHONY+=setup
 setup: $(NVM_DIR)/nvm.sh .git_configured ## install the latest nvm, configure git to rewrite git:// URLs
 
+# @TODO REMOVE COMMENTS:
+#		nvm ls | grep -q $(NODE_VER) || \
+
+# @echo NVM_DIR=$(NVM_DIR)
+# -type -t nvm
+# -type -p nvm
+# -. $(NVM_DIR)/nvm.sh && \
+# 	type -t nvm
+# -. $(NVM_DIR)/nvm.sh && \
+# 	type -p nvm
+# @. $(NVM_DIR)/nvm.sh && \
+# 	echo NVM_DIR=$(NVM_DIR)
+
 PHONY+=install_node
 install_node: install_nvm ## Install node using the NODE_VER variable
 	test -n "$(NODE_VER)"
 	. $(NVM_DIR)/nvm.sh && \
-		nvm ls | grep -q $(NODE_VER) || \
 			nvm install --default $(NODE_VER)
 	. $(NVM_DIR)/nvm.sh && \
 		nvm alias default $(NODE_VER)
 
 angular.tmp: setup
+	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
 	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call setup,$@)
-	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
-	# not needed, but it makes sense:
-	# sed -i 's|"angular": ">=1.2.26 <=1.5"|"angular": "$(ANGULAR_VER)"' $@/package.json
-    #
-	# @TODO TRY MOVING TO setup
-	# 3. shared:
-	# fix: npm ERR! cb() never called!
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g npm@$(NPM_VER)
-	#
-	# 4a. sort shared (installs grunt, grunt-express, grunt-karma, karma, tough-cookie instead)
+	@: # 4a. sort shared (installs grunt, grunt-express, grunt-karma, karma, tough-cookie instead)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			request@$(REQUEST_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER)
-	#
-	# @TODO TRY MOVING 5c, 6, 6b and 7 TO common2
-	# 5c. unneeded, but it can't hurt
+	@:
+	@: # @TODO TRY MOVING 5c, 6, 6b and 7 TO shared
+	@: # 5c. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
-	#
-	# 6. shared:
+	@:
+	@: # 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
-	#
-	# 6b. unneeded, but it can't hurt
+	@:
+	@: # 6b. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm dedup
-	#
-	# 7. shared:
+	@:
+	@: # 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
-	#
-	# 8. shared, but has -g:
-	# this installs version 1.8.3, as
-	# BUILD BREAKS if bower@1.3.2 is installed
-	# also, removing the -g causes tough-cookie 5.1.2 to be installed
+	@:
+	@: # 8. shared, but has -g:
+	@: # this installs version 1.8.3, as
+	@: # BUILD BREAKS if bower@1.3.2 is installed
+	@: # also, removing the -g causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower
-	#
-	# grunt shared (but here we install grunt later, with -g)
-	# 9. shared:
-	# without the version number, 0.4.5 would be installed
+	@:
+	@: # grunt shared (but here we install grunt later, with -g)
+	@: # 9. shared:
+	@: # without the version number, 0.4.5 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt@$(GRUNT_VER)
-	#
-	# 10. shared:
-	# without the version number, 1.5.0 would be installed
+	@:
+	@: # 10. shared:
+	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER)
-	#
-	# 11. shared, but uses global install:
+	@:
+	@: # 11. shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		bower install --quiet
-	#
-	# 12a. shared (but uses package instead of build:core):
+	@:
+	@: # 12a. shared (but uses package instead of build:core):
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/grunt package --quiet
-	#
+	@:
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
 	-cp -pv $@/LICENSE angular/angular.js.LICENSE
@@ -189,31 +205,27 @@ angular.tmp: setup
 	$(call fini,$@,angular)
 
 angular-translate.tmp: setup
+	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call setup,$@)
-	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
-	# 1. not shared:
-	# @TODO TRY SHARING:
-	# @TODO TRY REMOVING:
+	@: # 1. not shared:
+	@: # @TODO TRY SHARING:
+	@: # @TODO TRY REMOVING:
 	find $@ -type f -name package.json | xargs -r \
 		sed -E -i \
-			-e 's/(.*"grunt":\s*")[^"]+(".*)/\1'"$(GRUNT_VER)"'\2/' \
-			-e 's/(.*"grunt-cli":\s*")[^"]+(".*)/\1'"$(GRUNT_CLI_VER)"'\2/' \
-			-e 's/(.*"grunt-express":\s*")[^"]+(".*)/\1'"$(GRUNT_EXPRESS_VER)"'\2/' \
-			-e 's/(.*"grunt-karma":\s*")[^"]+(".*)/\1'"$(GRUNT_KARMA_VER)"'\2/' \
-			-e 's/(.*"karma":\s*")[^"]+(".*)/\1'"$(KARMA_VER)"'\2/' \
-			-e 's/(.*"tough-cookie":\s*")[^"]+(".*)/\1'"$(TOUCH_COOKIE_VER)"'\2/'
-	# 3. shared:
-	# fix: npm ERR! cb() never called!
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g npm@$(NPM_VER)
-	#
-	# 4b. unneeded, but it can't hurt
+			-e 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/' \
+			-e 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/' \
+			-e 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/' \
+			-e 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/' \
+			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/' \
+			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
+	@:
+	@: # 4b. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
-	#
-	# @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
-	# 5b. sorta shared (but other installs request, tough-cookie instead)
+	@:
+	@: # @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
+	@: # 5b. sorta shared (but other installs request, tough-cookie instead)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			grunt@$(GRUNT_VER) \
@@ -221,44 +233,44 @@ angular-translate.tmp: setup
 			grunt-karma@$(GRUNT_KARMA_VER) \
 			karma@$(KARMA_VER) \
 			tough-cookie@$(TOUCH_COOKIE_VER)
-	#
-	# 5c. unneeded, but it can't hurt
+	@:
+	@: # 5c. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
-	#
-	# 6. shared:
+	@:
+	@: # 6. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install
-	#
-	# 6b. unneeded, but it can't hurt
+	@:
+	@: # 6b. unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm dedup
-	#
-	# 7. shared:
+	@: 
+	@: # 7. shared:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
-	#
-	# @TODO TRY INSTALLED WITH -g
-	# 8. shared, but no -g:
-	# without the version number, 1.8.3 would be installed
-	# BUILD BREAKS when you add -g as this causes tough-cookie 5.1.2 to be installed
+	@:
+	@: # @TODO TRY INSTALLED WITH -g
+	@: # 8. shared, but no -g:
+	@: # without the version number, 1.8.3 would be installed
+	@: # BUILD BREAKS when you add -g as this causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER)
-	#
-	# 10. shared:
-	# without the version number, 1.5.0 would be installed
-	# BUILD BREAKS when this is moved up to step 5b.
+	@:
+	@: # 10. shared:
+	@: # without the version number, 1.5.0 would be installed
+	@: # BUILD BREAKS when this is moved up to step 5b.
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt-cli@$(GRUNT_CLI_VER)
-	#
-	# 11. shared, but uses local install:
+	@:
+	@: # 11. shared, but uses local install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		./node_modules/.bin/bower install --quiet
-	#
-	# 12b. shared, but uses local install,uses build:core instead of package:
+	@:
+	@: # 12b. shared, but uses local install,uses build:core instead of package:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		grunt build:core --quiet
-	#
+	@:
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE
 	$(call fini,$@,angular)
@@ -266,7 +278,7 @@ angular-translate.tmp: setup
 angular-translate-loader.tmp:
 	$(call init,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
 	cp -pv $@/angular-translate-loader-static-files.js angular
-	# see https://github.com/angular-translate/bower-angular-translate-loader-static-files?tab=readme-ov-file#license
+	@: # see https://github.com/angular-translate/bower-angular-translate-loader-static-files?tab=readme-ov-file#license
 	-cp -pv angular/angular-translate.js.LICENSE angular/angular-translate-loader-static-files.js.LICENSE
 	$(call fini,$@,angular)
 

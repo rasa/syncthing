@@ -72,7 +72,8 @@ define init
 endef
 
 # $1 dir
-define setup
+# $2 grunt command
+define build
 	@: # Stop bower from saying:
 	@: #  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
 	printf '{"interactive": false}' >$@/.bowerrc
@@ -115,14 +116,14 @@ define setup
 	 		tough-cookie@$(TOUCH_COOKIE_VER) \
 			--silent
 	@:
-	@: # unneeded, but it can't hurt
+	@: # probably unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install --silent
 	@:
-	@: # unneeded, but it can't hurt
+	@: # probably unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm dedup
 	@:
@@ -133,21 +134,15 @@ define setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
 	@:
-	@: # unneeded, but it can't hurt
+	@: # probably unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
-endef
-
-# $1 grunt command
-define build
-	@: # @TODO TEST IF REMOVING -g BREAKS THINGS
-	@: # this installs version 1.8.3
-	@: # BREAKS BUILD if bower@1.3.2 is installed
-	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
+	@:
+	@: # without the version number, 1.8.3 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower@$(BOWER_VER) --silent
 	@:
-	@: # unneeded, but it can't hurt
+	@: # probably unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
 	@:
@@ -155,7 +150,7 @@ define build
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
-	@: # unneeded, but it can't hurt
+	@: # probably unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
 	@:
@@ -165,7 +160,7 @@ define build
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		PATH="./node_modules/.bin/:$${PATH}" \
-			grunt $1 --quiet
+			grunt $2 --quiet
 endef
 
 # $1 dir.tmp
@@ -205,19 +200,8 @@ install_node: install_nvm ## Install node using the NODE_VER variable
 
 angular.tmp: setup
 	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
-	@:
 	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
-	@:
-	$(call setup,$@)
-	@:
-	@: # this installs version 1.8.3
-	@: # BREAKS BUILD if bower@1.3.2 is installed
-	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm install -g bower@$(BOWER_VER) --silent
-	@:
-	$(call build,package)
-	@:
+	$(call build,$@,package)
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
 	-cp -pv $@/LICENSE angular/angular.js.LICENSE
@@ -226,18 +210,8 @@ angular.tmp: setup
 
 angular-translate.tmp: setup
 	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
-	@:
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
-	@:
-	$(call setup,$@)
-	@:
-	@: # without the version number, 1.8.3 would be installed
-	@: # BREAKS BUILD if -g is added, as tough-cookie 5.1.2 gets installed
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm install -g bower@$(BOWER_VER) --silent
-	@:
-	$(call build,build:core)
-	@:
+	$(call build,$@,build:core)
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE
 	$(call fini,$@,angular)

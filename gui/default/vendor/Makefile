@@ -106,11 +106,11 @@ define setup
 			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
 	@:
 	@: # @TODO TRY MERGING THESE TWO INSTALLS:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install \
-			request@$(REQUEST_VER) \
-			tough-cookie@$(TOUCH_COOKIE_VER) \
-			--silent
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install \
+	# 		request@$(REQUEST_VER) \
+	# 		tough-cookie@$(TOUCH_COOKIE_VER) \
+	# 		--silent
 	@:
 	@: # @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
 	@: # 5b. sorta shared (but other installs request, tough-cookie instead)
@@ -120,6 +120,8 @@ define setup
 			grunt-express@$(GRUNT_EXPRESS_VER) \
 			grunt-karma@$(GRUNT_KARMA_VER) \
 			karma@$(KARMA_VER) \
+	 		request@$(REQUEST_VER) \
+	 		tough-cookie@$(TOUCH_COOKIE_VER) \
 			--silent
 	@:
 	@: # unneeded, but it can't hurt
@@ -182,7 +184,7 @@ angular.tmp: setup
 	$(call setup,$@)
 	@:
 	@: # 8. shared, but has -g:
-	@: # this installs version 1.8.3, as
+	@: # this installs version 1.8.3
 	@: # BREAKS BUILD if bower@1.3.2 is installed
 	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

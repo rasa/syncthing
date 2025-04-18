@@ -132,6 +132,10 @@ define setup
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm shrinkwrap --dev
+	@:
+	@: # unneeded, but it can't hurt
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm cache clean
 endef
 
 # $1 grunt command
@@ -182,7 +186,9 @@ install_node: install_nvm ## Install node using the NODE_VER variable
 
 angular.tmp: setup
 	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
+	@:
 	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
+	@:
 	$(call setup,$@)
 	@:
 	@: # this installs version 1.8.3
@@ -197,14 +203,6 @@ angular.tmp: setup
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
 	$(call build,package)
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	PATH="./node_modules/.bin/:$${PATH}" \
-	# 		bower install --quiet
-	@:
-	@: # @TODO TRY build:core
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	PATH="./node_modules/.bin/:$${PATH}" \
-	# 		grunt package --quiet
 	@:
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
@@ -214,10 +212,13 @@ angular.tmp: setup
 
 angular-translate.tmp: setup
 	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
+	@:
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
+	@:
 	$(call setup,$@)
+	@:
 	@: # without the version number, 1.8.3 would be installed
-	@: # BREAKS BUILD if -g is added, as this causes tough-cookie 5.1.2 to be installed
+	@: # BREAKS BUILD if -g is added, as tough-cookie 5.1.2 gets installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER) --silent
 	@:
@@ -225,17 +226,9 @@ angular-translate.tmp: setup
 	@: # without the version number, 1.5.0 would be installed
 	@: # BREAKS BUILD when this is moved to shared
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g grunt-cli@$(GRUNT_CLI_VER) --silent
+		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
 	$(call build,build:core)
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	PATH="./node_modules/.bin/:$${PATH}" \
-	# 		bower install --quiet
-	@:
-	@: # @TODO TRY package
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	PATH="./node_modules/.bin/:$${PATH}" \
-	# 		grunt build:core --quiet
 	@:
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE

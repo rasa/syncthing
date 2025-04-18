@@ -60,19 +60,17 @@ DIRS = \
 	jquery.tmp \
 	moment.tmp
 
-# $1 dir
-# $2 url
-# $3 tag
+# $1 url
+# $2 tag
 define init
-	test -d $1 || git clone -q $2 $1
+	test -d $@ || git clone -q $1 $@
 	@: # git reset --hard
 	@: # git clean -fdx
-	cd $1 && \
-		git checkout -q $3
+	cd $@ && \
+		git checkout -q $2
 endef
 
-# $1 dir
-# $2 grunt command
+# $1 grunt command
 define build
 	@: # Stop bower from saying:
 	@: #  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
@@ -135,24 +133,24 @@ define build
 		npm shrinkwrap --dev
 	@:
 	@: # probably unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm cache clean
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm cache clean
 	@:
 	@: # without the version number, 1.8.3 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower@$(BOWER_VER) --silent
 	@:
 	@: # probably unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm cache clean
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm cache clean
 	@:
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
 	@: # probably unneeded, but it can't hurt
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm cache clean
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm cache clean
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		PATH="./node_modules/.bin/:$${PATH}" \
@@ -160,19 +158,19 @@ define build
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		PATH="./node_modules/.bin/:$${PATH}" \
-			grunt $2 --quiet
+			grunt $1 --quiet
 endef
 
 # $1 dir.tmp
 # $2 dest_dir
 define fini
+	cd "$@" && \
+		git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call basename,$@)-tags.txt"
 	cd "$1" && \
-		git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call basename,$1)-tags.txt"
-	cd "$2" && \
-		git diff -uw . >"../$(call basename,$1).diff"
-	cd "$2" && \
-		git stash push -m "$(call basename,$1)" .
-	-touch $1
+		git diff -uw . >"../$(call basename,$@).diff"
+	cd "$1" && \
+		git stash push -m "$(call basename,$@)" .
+	-touch $2
 endef
 
 $(NVM_DIR)/nvm.sh:
@@ -200,64 +198,64 @@ install_node: install_nvm ## Install node using the NODE_VER variable
 
 angular.tmp: setup
 	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"
-	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
-	$(call build,$@,package)
+	$(call init,https://github.com/angular/angular.js,$(ANGULAR_VER))
+	$(call build,package)
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
 	-cp -pv $@/LICENSE angular/angular.js.LICENSE
 	-cp -pv $@/LICENSE angular/angular-sanitize.js.LICENSE
-	$(call fini,$@,angular)
+	$(call fini,angular)
 
 angular-translate.tmp: setup
 	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
-	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
-	$(call build,$@,build:core)
+	$(call init,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
+	$(call build,build:core)
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE
-	$(call fini,$@,angular)
+	$(call fini,angular)
 
 angular-translate-loader.tmp:
-	$(call init,$@,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
+	$(call init,https://github.com/angular-translate/bower-angular-translate-loader-static-files,$(ANGULAR_TRANSLATE_LOADER_VER))
 	cp -pv $@/angular-translate-loader-static-files.js angular
 	@: # see https://github.com/angular-translate/bower-angular-translate-loader-static-files?tab=readme-ov-file#license
 	-cp -pv angular/angular-translate.js.LICENSE angular/angular-translate-loader-static-files.js.LICENSE
-	$(call fini,$@,angular)
+	$(call fini,angular)
 
 angularUtils.tmp:
-	$(call init,$@,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER))
+	$(call init,https://github.com/michaelbromley/angularUtils,$(ANGULAR_UTILS_VER))
 	cp -pv $@/src/directives/pagination/dirPagination.js angular/angular-dirPagination.js
 	-cp -pv $@/license.txt angular/angular-dirPagination.js.LICENSE
-	$(call fini,$@,angular)
+	$(call fini,angular)
 
 bootstrap.tmp:
-	$(call init,$@,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
+	$(call init,https://github.com/twbs/bootstrap,$(BOOTSTRAP_VER))
 	cp -pv $@/dist/css/bootstrap.css       bootstrap/css
 	cp -pv $@/dist/css/bootstrap-theme.css bootstrap/css
 	cp -pv $@/dist/js/bootstrap.js         bootstrap/js
 	-cp -pv $@/LICENSE                      bootstrap/LICENSE
-	$(call fini,$@,bootstrap)
+	$(call fini,bootstrap)
 
 fancytree.tmp:
-	$(call init,$@,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
+	$(call init,https://github.com/mar10/fancytree,$(FANCYTREE_VER))
 	cd $@/dist && \
 		patch --batch --ignore-whitespace --strip=5 < ../../8509.patch
 	cd $@/dist && \
 		patch --batch --ignore-whitespace  --strip=1 < ../../f085361.patch
 	cp -pv $@/dist/jquery.fancytree-all-deps.js fancytree
 	-cp -pv $@/dist/LICENSE.txt fancytree
-	$(call fini,$@,fancytree)
+	$(call fini,fancytree)
 
 jquery.tmp:
-	$(call init,$@,https://github.com/jquery/jquery,$(JQUERY_VER))
+	$(call init,https://github.com/jquery/jquery,$(JQUERY_VER))
 	cp -pv $@/dist/jquery.js jquery/jquery-$(JQUERY_VER).js
 	-cp -pv $@/LICENSE.txt    jquery/LICENSE
-	$(call fini,$@,jquery)
+	$(call fini,jquery)
 
 moment.tmp:
-	$(call init,$@,https://github.com/moment/moment,$(MOMENT_VER))
+	$(call init,https://github.com/moment/moment,$(MOMENT_VER))
 	cp -pv $@/moment.js moment
 	-cp -pv $@/LICENSE   moment
-	$(call fini,$@,moment)
+	$(call fini,moment)
 
 PHONY+=all
 all: checkout_lfs build checkout_asis ## Run `make checkout_lfs build checkout_asis`

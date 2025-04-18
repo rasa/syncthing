@@ -105,15 +105,6 @@ define setup
 			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/' \
 			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/'
 	@:
-	@: # @TODO TRY MERGING THESE TWO INSTALLS:
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm install \
-	# 		request@$(REQUEST_VER) \
-	# 		tough-cookie@$(TOUCH_COOKIE_VER) \
-	# 		--silent
-	@:
-	@: # @TODO TRY INSTALLING grunt IN STEP 9. AS ABOVE
-	@: # 5b. sorta shared (but other installs request, tough-cookie instead)
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
 			grunt@$(GRUNT_VER) \
@@ -194,8 +185,8 @@ angular.tmp: setup
 	@: # grunt shared (but here we install grunt later, with -g)
 	@: # 9. shared:
 	@: # without the version number, 0.4.5 would be installed
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt@$(GRUNT_VER) --silent
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	npm install grunt@$(GRUNT_VER) --silent
 	@:
 	@: # @TODO TRY INSTALLING IN SHARED
 	@: # 10. shared:

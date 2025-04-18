@@ -140,6 +140,10 @@ endef
 
 # $1 grunt command
 define build
+	@: # without the version number, 1.5.0 would be installed
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
+	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		PATH="./node_modules/.bin/:$${PATH}" \
 			bower install --quiet
@@ -197,10 +201,6 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower --silent
 	@:
-	@: # without the version number, 1.5.0 would be installed
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
-	@:
 	$(call build,package)
 	@:
 	cp -pv $@/build/angular.js          angular
@@ -220,10 +220,6 @@ angular-translate.tmp: setup
 	@: # BREAKS BUILD if -g is added, as tough-cookie 5.1.2 gets installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER) --silent
-	@:
-	@: # without the version number, 1.5.0 would be installed
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
 	$(call build,build:core)
 	@:

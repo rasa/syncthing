@@ -196,14 +196,15 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		PATH="./node_modules/.bin/:$${PATH}" \
-			bower install --quiet
+	$(call build,package)
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	PATH="./node_modules/.bin/:$${PATH}" \
+	# 		bower install --quiet
 	@:
 	@: # @TODO TRY build:core
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		PATH="./node_modules/.bin/:$${PATH}" \
-			grunt package --quiet
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	PATH="./node_modules/.bin/:$${PATH}" \
+	# 		grunt package --quiet
 	@:
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
@@ -226,14 +227,15 @@ angular-translate.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		PATH="./node_modules/.bin/:$${PATH}" \
-			bower install --quiet
+	$(call build,build:core)
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	PATH="./node_modules/.bin/:$${PATH}" \
+	# 		bower install --quiet
 	@:
 	@: # @TODO TRY package
-	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		PATH="./node_modules/.bin/:$${PATH}" \
-			grunt build:core --quiet
+	# cd $@ && . $(NVM_DIR)/nvm.sh && \
+	# 	PATH="./node_modules/.bin/:$${PATH}" \
+	# 		grunt build:core --quiet
 	@:
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE

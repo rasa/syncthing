@@ -134,6 +134,17 @@ define setup
 		npm shrinkwrap --dev
 endef
 
+# $1 grunt command
+define build
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		PATH="./node_modules/.bin/:$${PATH}" \
+			bower install --quiet
+	@:
+	cd $@ && . $(NVM_DIR)/nvm.sh && \
+		PATH="./node_modules/.bin/:$${PATH}" \
+			grunt $1 --quiet
+endef
+
 # $1 dir.tmp
 # $2 dest_dir
 define fini
@@ -174,33 +185,25 @@ angular.tmp: setup
 	$(call init,$@,https://github.com/angular/angular.js,$(ANGULAR_VER))
 	$(call setup,$@)
 	@:
-	@: # 8. shared, but has -g:
 	@: # this installs version 1.8.3
 	@: # BREAKS BUILD if bower@1.3.2 is installed
 	@: # BREAKS BUILD if -g is removed, as tough-cookie 5.1.2 gets installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower --silent
 	@:
-	@: # @TODO TRY REMOVING AS WE HAVE ALREADY INSTALLED IT IN SHARED:
-	@: # grunt shared (but here we install grunt later, with -g)
-	@: # 9. shared:
-	@: # without the version number, 0.4.5 would be installed
-	# cd $@ && . $(NVM_DIR)/nvm.sh && \
-	# 	npm install grunt@$(GRUNT_VER) --silent
-	@:
-	@: # @TODO TRY INSTALLING IN SHARED
-	@: # 10. shared:
+	@: # @TODO TRY INSTALLING WITH -g
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
-	@: # 11. shared, but uses global install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		bower install --quiet
+		PATH="./node_modules/.bin/:$${PATH}" \
+			bower install --quiet
 	@:
-	@: # 12a. shared (but uses package instead of build:core):
+	@: # @TODO TRY build:core
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/grunt package --quiet
+		PATH="./node_modules/.bin/:$${PATH}" \
+			grunt package --quiet
 	@:
 	cp -pv $@/build/angular.js          angular
 	cp -pv $@/build/angular-sanitize.js angular
@@ -212,25 +215,25 @@ angular-translate.tmp: setup
 	$(MAKE) install_node NODE_VER="$(B_NODE_VER)"
 	$(call init,$@,https://github.com/angular-translate/angular-translate,$(ANGULAR_TRANSLATE_VER))
 	$(call setup,$@)
-	@: # 8. shared, but no -g:
 	@: # without the version number, 1.8.3 would be installed
-	@: # BREAKS BUILD when you add -g as this causes tough-cookie 5.1.2 to be installed
+	@: # BREAKS BUILD if -g is added, as this causes tough-cookie 5.1.2 to be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install bower@$(BOWER_VER) --silent
 	@:
-	@: # 10. shared:
+	@: # @TODO TRY INSTALLING WITHOUT -g
 	@: # without the version number, 1.5.0 would be installed
-	@: # BREAKS BUILD when this is moved up to step 5b.
+	@: # BREAKS BUILD when this is moved to shared
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g grunt-cli@$(GRUNT_CLI_VER) --silent
 	@:
-	@: # 11. shared, but uses local install:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		./node_modules/.bin/bower install --quiet
+		PATH="./node_modules/.bin/:$${PATH}" \
+			bower install --quiet
 	@:
-	@: # 12b. shared, but uses local install,uses build:core instead of package:
+	@: # @TODO TRY package
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		grunt build:core --quiet
+		PATH="./node_modules/.bin/:$${PATH}" \
+			grunt build:core --quiet
 	@:
 	cp -pv $@/dist/angular-translate.js angular
 	-cp -pv $@/LICENSE angular/angular-translate.js.LICENSE

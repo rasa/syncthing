@@ -197,7 +197,6 @@ angular.tmp: setup
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install -g bower --silent
 	@:
-	@: # @TODO TRY INSTALLING WITH -g
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install grunt-cli@$(GRUNT_CLI_VER) --silent

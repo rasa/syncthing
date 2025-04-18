@@ -227,7 +227,7 @@ angular-translate.tmp: setup
 	@: # without the version number, 1.8.3 would be installed
 	@: # BREAKS BUILD if -g is added, as tough-cookie 5.1.2 gets installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install bower@$(BOWER_VER) --silent
+		npm install -g bower@$(BOWER_VER) --silent
 	@:
 	$(call build,build:core)
 	@:

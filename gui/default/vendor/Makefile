@@ -60,17 +60,60 @@ DIRS = \
 	jquery.tmp \
 	moment.tmp
 
-# $1 url
-# $2 tag
+# GitHub stopped supporting git:// URLs:
+.git_urls.fixed:
+	git config --global url."https://github.com/".insteadOf git://github.com/
+	touch $@
+
+$(NVM_DIR)/nvm.sh:
+	test -f "$@" || \
+		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$(NVM_VER)/install.sh | bash
+
+PHONY+=install_nvm
+install_nvm: $(NVM_DIR)/nvm.sh ## Install the latest nvm
+
+PHONY+=install_node
+install_node: install_nvm ## Install node using the NODE_VER variable
+	test -n "$(NODE_VER)"
+	. $(NVM_DIR)/nvm.sh && \
+			nvm install --default $(NODE_VER)
+	. $(NVM_DIR)/nvm.sh && \
+		nvm alias default $(NODE_VER)
+
+FIXJSONS_SED := .fixjsons.sed
+
+$(FIXJSONS_SED):
+	@: # Change git: URLs to https: as GitHub stopped supporting git:// URLs:
+	printf '%s\n' 's|git://|https://|;' >$@
+	@: # Pin exact versions, not semver ranges:
+	printf '%s\n' 's/"~/"/; s/"^/"/;' >>$@
+	@: # Stop pulling in ES6 code:
+	printf '%s\n' '/karma-phantomjs-launcher/d;' >>$@
+	@: # Pin angular version (not required, but it can't hurt):
+	printf '%s\n' 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/;' >>$@
+	@: # Pin all package versions:
+	printf '%s\n' 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/;' >>$@
+	printf '%s\n' 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/;' >>$@
+	printf '%s\n' 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/;' >>$@
+	printf '%s\n' 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/;' >>$@
+	printf '%s\n' 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/;' >>$@
+	printf '%s\n' 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;' >>$@
+
+PHONY+=fixjsons
+fixjsons: $(FIXJSONS_SED)
+
+PHONY+=setup
+setup: .git_urls.fixed install_nvm fixjsons ## install the latest nvm, configure git to rewrite git:// URLs
+
+# $1: url
+# $2: tag
 define init
 	test -d $@ || git clone -q $1 $@
-	@: # git reset --hard
-	@: # git clean -fdx
 	cd $@ && \
 		git checkout -q $2
 endef
 
-# $1 grunt command
+# $1: grunt command
 define build
 	@: # Stop bower from prompting:
 	@: #  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
@@ -94,18 +137,15 @@ define build
 	 		tough-cookie@$(TOUCH_COOKIE_VER) \
 			--silent
 	@:
-	@: # probably unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install --silent
 	@:
-	@: # probably unneeded, but it can't hurt
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm dedup
 	@:
-	@: # needed, since shared installs everything
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm prune
 	@:
@@ -129,8 +169,7 @@ define build
 			grunt $1 --quiet
 endef
 
-# $1 dir.tmp
-# $2 dest_dir
+# $1: dest_dir
 define fini
 	cd "$@" && \
 		git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call basename,$@)-tags.txt"
@@ -138,50 +177,8 @@ define fini
 		git diff -uw . >"../$(call basename,$@).diff"
 	cd "$1" && \
 		git stash push -m "$(call basename,$@)" .
-	-touch $2
+	-touch $1
 endef
-
-$(NVM_DIR)/nvm.sh:
-	test -f "$@" || \
-		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$(NVM_VER)/install.sh | bash
-
-PHONY+=install_nvm
-install_nvm: $(NVM_DIR)/nvm.sh ## Install the latest nvm
-
-# GitHub stopped supporting git:// URLs:
-.git_urls.fixed:
-	git config --global url."https://github.com/".insteadOf git://github.com/
-	touch $@
-
-FIXJSONS_SED := .fixjsons.sed
-
-$(FIXJSONS_SED):
-	@: # Change git: URLs to https: as GitHub stopped supporting git:// URLs:
-	printf '%s\n' 's|git://|https://|;' >$@
-	@: # Pin exact versions, not semver ranges:
-	printf '%s\n' 's/"~/"/; s/"^/"/;' >>$@
-	@: # Stop pulling in ES6 code:
-	printf '%s\n' '/karma-phantomjs-launcher/d;' >>$@
-	@: # Pin angular version (not required, but it can't hurt):
-	printf '%s\n' 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/;' >>$@
-	@: # Pin all package versions:
-	printf '%s\n' 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/;' >>$@
-	printf '%s\n' 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/;' >>$@
-	printf '%s\n' 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/;' >>$@
-	printf '%s\n' 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/;' >>$@
-	printf '%s\n' 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/;' >>$@
-	printf '%s\n' 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;' >>$@
-
-PHONY+=setup
-setup: $(NVM_DIR)/nvm.sh .git_urls.fixed $(FIXJSONS_SED) ## install the latest nvm, configure git to rewrite git:// URLs
-
-PHONY+=install_node
-install_node: install_nvm ## Install node using the NODE_VER variable
-	test -n "$(NODE_VER)"
-	. $(NVM_DIR)/nvm.sh && \
-			nvm install --default $(NODE_VER)
-	. $(NVM_DIR)/nvm.sh && \
-		nvm alias default $(NODE_VER)
 
 angular.tmp: setup
 	$(MAKE) install_node NODE_VER="$(A_NODE_VER)"

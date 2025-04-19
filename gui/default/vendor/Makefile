@@ -86,16 +86,16 @@ define build
 	@: # Change git: URLs to https: (Github dropped support for git: URLs in 2022):
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
 		sed -E -i \
-			-e 's|git://|https://|;' \
-			-e 's/"~/"/; s/"^/"/;' \
-			-e '/karma-phantomjs-launcher/d;' \
-			-e 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/;' \
-			-e 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/;' \
-			-e 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/;' \
-			-e 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/;' \
-			-e 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/;' \
-			-e 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/;' \
-			-e 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;'
+			's|git://|https://|; \
+			s/"~/"/; s/"^/"/; \
+			/karma-phantomjs-launcher/d; \
+			s/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/; \
+			s/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/; \
+			s/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/; \
+			s/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/; \
+			s/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/; \
+			s/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/; \
+			s/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;'
 	@:
 	@: # Fix ES6 error: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

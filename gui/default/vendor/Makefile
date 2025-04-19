@@ -77,6 +77,18 @@ endef
 	# Pin angular version (not required, but it can't hurt):
 	# @: # Pin versions (only angular-translate target needs this):
 
+SED_SCRIPT :=
+SED_SCRIPT += s|git://|https://|;
+SED_SCRIPT += s/"~/"/; s/"^/"/;
+SED_SCRIPT += /karma-phantomjs-launcher/d;
+SED_SCRIPT += s/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/;
+SED_SCRIPT += s/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/;
+SED_SCRIPT += s/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/;
+SED_SCRIPT += s/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/;
+SED_SCRIPT += s/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/;
+SED_SCRIPT += s/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/;
+SED_SCRIPT += s/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;
+
 # $1 grunt command
 define build
 	@: # Stop bower from prompting:
@@ -85,17 +97,7 @@ define build
 	@:
 	@: # Change git: URLs to https: (Github dropped support for git: URLs in 2022):
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
-		sed -E -i \
-			's|git://|https://|; \
-			s/"~/"/; s/"^/"/; \
-			/karma-phantomjs-launcher/d; \
-			s/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/; \
-			s/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/; \
-			s/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/; \
-			s/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/; \
-			s/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/; \
-			s/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/; \
-			s/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;'
+		sed -E -i -e '$(SED_SCRIPT)'
 	@:
 	@: # Fix ES6 error: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \

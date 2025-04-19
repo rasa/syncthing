@@ -1,4 +1,6 @@
-.git_configured
 *.deb
 *.tmp
+.fixjsons.sed
+.git_urls.fixed
+
 

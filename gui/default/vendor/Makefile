@@ -70,25 +70,6 @@ define init
 		git checkout -q $2
 endef
 
-	# @:
-	# @: # pin all package versions
-	# @:
-	# @: # Stop pulling in ES6 code:
-	# Pin angular version (not required, but it can't hurt):
-	# @: # Pin versions (only angular-translate target needs this):
-
-SED_SCRIPT :=
-SED_SCRIPT += s|git://|https://|;
-SED_SCRIPT += s/"~/"/; s/"^/"/;
-SED_SCRIPT += /karma-phantomjs-launcher/d;
-SED_SCRIPT += s/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/;
-SED_SCRIPT += s/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/;
-SED_SCRIPT += s/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/;
-SED_SCRIPT += s/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/;
-SED_SCRIPT += s/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/;
-SED_SCRIPT += s/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/;
-SED_SCRIPT += s/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;
-
 # $1 grunt command
 define build
 	@: # Stop bower from prompting:
@@ -97,7 +78,7 @@ define build
 	@:
 	@: # Change git: URLs to https: (Github dropped support for git: URLs in 2022):
 	find $@ -type f -name 'bower.json' -o -name package.json -o -name 'npm-shrinkwrap*.json' | xargs \
-		sed -E -i -e '$(SED_SCRIPT)'
+		sed -E -i -f '$(FIXJSONS_SED)'
 	@:
 	@: # Fix ES6 error: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
@@ -167,13 +148,32 @@ $(NVM_DIR)/nvm.sh:
 PHONY+=install_nvm
 install_nvm: $(NVM_DIR)/nvm.sh ## Install the latest nvm
 
-# GitHub doesn't support git:// URLs any more
-.git_map_git_urls:
+# GitHub stopped supporting git:// URLs:
+.git_urls.fixed:
 	git config --global url."https://github.com/".insteadOf git://github.com/
 	touch $@
 
+FIXJSONS_SED := .fixjsons.sed
+
+$(FIXJSONS_SED):
+	@: # Change git: URLs to https: as GitHub stopped supporting git:// URLs:
+	printf '%s\n' 's|git://|https://|;' >$@
+	@: # Pin exact versions, not semver ranges:
+	printf '%s\n' 's/"~/"/; s/"^/"/;' >>$@
+	@: # Stop pulling in ES6 code:
+	printf '%s\n' '/karma-phantomjs-launcher/d;' >>$@
+	@: # Pin angular version (not required, but it can't hurt):
+	printf '%s\n' 's/("angular":\s*)"[^"]+"(.*)/\1"$(ANGULAR_VER)"\2/;' >>$@
+	@: # Pin all package versions:
+	printf '%s\n' 's/("grunt":\s*)"[^"]+"(.*)/\1"$(GRUNT_VER)"\2/;' >>$@
+	printf '%s\n' 's/("grunt-cli":\s*)"[^"]+"(.*)/\1"$(GRUNT_CLI_VER)"\2/;' >>$@
+	printf '%s\n' 's/("grunt-express":\s*)"[^"]+"(.*)/\1"$(GRUNT_EXPRESS_VER)"\2/;' >>$@
+	printf '%s\n' 's/("grunt-karma":\s*)"[^"]+"(.*)/\1"$(GRUNT_KARMA_VER)"\2/;' >>$@
+	printf '%s\n' 's/("karma":\s*)"[^"]+"(.*)/\1"$(KARMA_VER)"\2/;' >>$@
+	printf '%s\n' 's/("tough-cookie":\s*)"[^"]"+(.*)/\1"$(TOUCH_COOKIE_VER)"\2/;' >>$@
+
 PHONY+=setup
-setup: $(NVM_DIR)/nvm.sh .git_map_git_urls ## install the latest nvm, configure git to rewrite git:// URLs
+setup: $(NVM_DIR)/nvm.sh .git_urls.fixed $(FIXJSONS_SED) ## install the latest nvm, configure git to rewrite git:// URLs
 
 PHONY+=install_node
 install_node: install_nvm ## Install node using the NODE_VER variable
@@ -295,6 +295,7 @@ PHONY+=nuke
 nuke: clean ## Clean all downloaded/generated files
 	-rm -fr *-tags.txt
 	-rm -fr *.diff
+	-rm -fr $(FIXJSONS_SED)
 
 PHONY+=uninstall_all
 uninstall_all: ## Uninstall nvm and all node versions by wiping NVM_DIR, ~/.npm, etc.

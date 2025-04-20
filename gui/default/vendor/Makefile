@@ -28,12 +28,13 @@ GRUNT_CLI_VER ?= 0.1.13
 TOUCH_COOKIE_VER ?= 0.12.1
 
 # angular 1.3.20 versions:
-A_NODE_VER ?= 4.2.6
+NODE_VER ?= 4.3.2
+A_NODE_VER ?= $(NODE_VER)
 # A_NODE_VER ?= 0.10.48
 REQUEST_VER ?= 2.51.0
 
 # angular-translate 2.9.0's versions:
-B_NODE_VER ?= 4.2.6
+B_NODE_VER ?= $(NODE_VER)
 GRUNT_EXPRESS_VER ?= 0.2.1
 GRUNT_KARMA_VER ?= 0.8.3
 KARMA_VER ?= 0.12.31
@@ -315,5 +316,29 @@ help: ## Display a help screen
 	@printf '$(fmt)' 'Target' 'Description'
 	@printf '$(fmt)' '------' '------------------------------------------'
 	@awk -F ':.*##[ \t]*' '/^[^#: \t]+:.*##/ {printf "$(fmt)", $$1, $$2}' $(MAKEFILE_LIST) | sort
+
+define tags
+	mkdir -p tags/$(call notdir,$1)
+	test -d tags/$(call notdir,$1)/.git || \
+		git clone $1 tags/$(call notdir,$1)
+	cd tags/$(call notdir,$1) && \
+		git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call notdir,$1).txt"
+endef
+
+# https://github.com/yarnpkg/berry
+
+TAG_DIRS=node karma request tough-cookie
+
+PHONY+=tags
+tags:
+	$(call tags,https://github.com/nodejs/node)
+	$(call tags,https://github.com/karma-runner/karma)
+	$(call tags,https://github.com/request/request)
+	$(call tags,https://github.com/salesforce/tough-cookie)
+
+PHONY+=clean_tags
+clean_tags:
+	cd tags && \
+		rm -fr $(TAG_DIRS)
 
 .PHONY: $(PHONY)

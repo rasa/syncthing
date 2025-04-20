@@ -28,7 +28,8 @@ GRUNT_CLI_VER ?= 0.1.13
 TOUCH_COOKIE_VER ?= 0.12.1
 
 # angular 1.3.20 versions:
-A_NODE_VER ?= 0.10.48
+A_NODE_VER ?= 4.2.6
+# A_NODE_VER ?= 0.10.48
 REQUEST_VER ?= 2.51.0
 
 # angular-translate 2.9.0's versions:
@@ -115,6 +116,9 @@ endef
 
 # $1: grunt command
 define build
+	@: # disable unneeded steps as they break the build under node 4.2.6
+	find $@ -type f -name 'Gruntfile.js' | xargs \
+		sed -i "s/, 'docs'//; s/, 'minall'//;"
 	@: # Stop bower from prompting:
 	@: #  [?] May bower anonymously report usage statistics to improve the tool over time? (Y/n)
 	printf '{"interactive": false}' >$@/.bowerrc
@@ -171,10 +175,11 @@ endef
 
 # $1: dest_dir
 define fini
+	mkdir -p tags diffs
 	cd "$@" && \
-		git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../$(call basename,$@)-tags.txt"
+		git for-each-ref --sort=creatordate --format '%(creatordate:short) %(refname:short)' refs/tags > "../tags/$(call basename,$@).txt"
 	cd "$1" && \
-		git diff -uw . >"../$(call basename,$@).diff"
+		git diff -uw . >"../diffs/$(call basename,$@).diff"
 	cd "$1" && \
 		git stash push -m "$(call basename,$@)" .
 	-touch $1
@@ -290,8 +295,6 @@ clean: ## Clean just the .tmp directories, and downloaded .deb files
 
 PHONY+=nuke
 nuke: clean ## Clean all downloaded/generated files
-	-rm -fr *-tags.txt
-	-rm -fr *.diff
 	-rm -fr $(FIXJSONS_SED)
 
 PHONY+=uninstall_all

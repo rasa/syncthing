@@ -1,6 +1,7 @@
 *.deb
-*.tmp
+*.tmp/
 .fixjsons.sed
 .git_urls.fixed
-
+/tags/
+/diffs/
 

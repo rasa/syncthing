@@ -194,19 +194,26 @@ jobs:
 
   codesign-windows:
     name: Codesign for Windows
-    if: ${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
     environment: release
     runs-on: windows-latest
     needs:
       - package-windows
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID }}" && \
+            echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+
       - name: Download artifacts
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@v4
         with:
           name: unsigned-packages-windows
           path: packages
 
       - name: Extract packages
+        if: env.RUN_JOB == 'true'
         working-directory: packages
         run: |
           $files = Get-ChildItem "." -Filter *.zip
@@ -215,6 +222,7 @@ jobs:
           }
 
       - name: Sign files with Trusted Signing
+        if: env.RUN_JOB == 'true'
         uses: azure/trusted-signing-action@v0.5.1
         with:
           azure-tenant-id: ${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID }}
@@ -231,6 +239,7 @@ jobs:
           timestamp-digest: SHA256
 
       - name: Repackage packages
+        if: env.RUN_JOB == 'true'
         working-directory: packages
         run: |
           $files = Get-ChildItem "." -Filter *.zip
@@ -240,6 +249,7 @@ jobs:
           }
 
       - name: Archive artifacts
+        if: env.RUN_JOB == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: packages-windows
@@ -402,18 +412,25 @@ jobs:
 
   notarize-macos:
     name: Notarize for macOS
-    if: ${{ secrets.APPSTORECONNECT_API_KEY_ISSUER != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
     environment: release
     needs:
       - package-macos
     runs-on: macos-latest
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.APPSTORECONNECT_API_KEY_ISSUER }}" && \
+            echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+
       - name: Download artifacts
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@v4
         with:
           name: packages-macos
 
       - name: Notarize binaries
+        if: env.RUN_JOB == 'true'
         run: |
           APPSTORECONNECT_API_KEY_PATH="$RUNNER_TEMP/apikey.p8"
           echo "$APPSTORECONNECT_API_KEY" | base64 -d -o "$APPSTORECONNECT_API_KEY_PATH"
@@ -546,7 +563,7 @@ jobs:
 
   sign-for-upgrade:
     name: Sign for upgrade
-    if: ${{ secrets.STSIGTOOL_PRIVATE_KEY != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-')  || startsWith(github.ref, 'refs/tags/v')) }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-')  || startsWith(github.ref, 'refs/tags/v'))
     environment: release
     needs:
       - codesign-windows
@@ -556,31 +573,42 @@ jobs:
       - package-source
     runs-on: ubuntu-latest
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.STSIGTOOL_PRIVATE_KEY }}" && \
+            echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+
       - uses: actions/checkout@v4
+        if: env.RUN_JOB == 'true'
         with:
           fetch-depth: 0
           ref: ${{ github.ref }} # https://github.com/actions/checkout/issues/882
 
       - uses: actions/checkout@v4
+        if: env.RUN_JOB == 'true'
         with:
           repository: syncthing/release-tools
           path: tools
           fetch-depth: 0
 
       - name: Download artifacts
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@v4
 
       - uses: actions/setup-go@v5
+        if: env.RUN_JOB == 'true'
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
           check-latest: true
 
       - name: Install signing tool
+        if: env.RUN_JOB == 'true'
         run: |
           go install ./cmd/dev/stsigtool
 
       - name: Sign archives
+        if: env.RUN_JOB == 'true'
         run: |
           export PRIVATE_KEY="$RUNNER_TEMP/privkey.pem"
           export PATH="$PATH:$(go env GOPATH)/bin"
@@ -594,6 +622,7 @@ jobs:
           STSIGTOOL_PRIVATE_KEY: ${{ secrets.STSIGTOOL_PRIVATE_KEY }}
 
       - name: Create shasum files
+        if: env.RUN_JOB == 'true'
         run: |
           pushd packages
           files=(*.tar.gz *.zip)
@@ -605,6 +634,7 @@ jobs:
           echo "VERSION=$version" >> $GITHUB_ENV
 
       - name: Sign shasum files
+        if: env.RUN_JOB == 'true'
         uses: docker://ghcr.io/kastelo/ezapt:latest
         with:
           args:
@@ -614,7 +644,7 @@ jobs:
           EZAPT_KEYRING_BASE64: ${{ secrets.APT_GPG_KEYRING_BASE64 }}
 
       - name: Sign source
-        if: ${{ secrets.APT_GPG_KEYRING_BASE64 != '' }}
+        if: env.RUN_JOB == 'true'
         uses: docker://ghcr.io/kastelo/ezapt:latest
         with:
           args:
@@ -624,6 +654,7 @@ jobs:
           EZAPT_KEYRING_BASE64: ${{ secrets.APT_GPG_KEYRING_BASE64 }}
 
       - name: Archive artifacts
+        if: env.RUN_JOB == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: packages-signed
@@ -694,31 +725,40 @@ jobs:
 
   publish-nightly:
     name: Publish nightly build
-    if: ${{ secrets.S3_REGION != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/heads/release-nightly') }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/heads/release-nightly')
     environment: release
     needs:
       - sign-for-upgrade
     runs-on: ubuntu-latest
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.S3_REGION }}" && \
+            echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+  
       - uses: actions/checkout@v4
+        if: env.RUN_JOB == 'true'
         with:
           repository: syncthing/release-tools
           path: tools
           fetch-depth: 0
 
       - name: Download artifacts
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@v4
         with:
           name: packages-signed
           path: packages
 
       - uses: actions/setup-go@v5
+        if: env.RUN_JOB == 'true'
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
           check-latest: true
 
       - name: Create release json
+        if: env.RUN_JOB == 'true'
         run: |
           cd packages
           "$GITHUB_WORKSPACE/tools/generate-release-json" "$BASE_URL" > nightly.json
@@ -726,6 +766,7 @@ jobs:
           BASE_URL: ${{ secrets.NIGHTLY_BASE_URL }}
 
       - name: Push artifacts
+        if: env.RUN_JOB == 'true'
         uses: docker://docker.io/rclone/rclone:latest
         env:
           RCLONE_CONFIG_OBJSTORE_TYPE: s3
@@ -744,42 +785,53 @@ jobs:
 
   publish-release-files:
     name: Publish release files
-    if: ${{ secrets.S3_REGION != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/tags/v')) }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/tags/v'))
     environment: release
     needs:
       - sign-for-upgrade
       - package-debian
     runs-on: ubuntu-latest
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.S3_REGION }}" && \
+            echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+
       - uses: actions/checkout@v4
+        if: env.RUN_JOB == 'true'
         with:
           fetch-depth: 0
           ref: ${{ github.ref }} # https://github.com/actions/checkout/issues/882
 
       - name: Download signed packages
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@v4
         with:
           name: packages-signed
           path: packages
 
       - name: Download debian packages
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@v4
         with:
           name: debian-packages
           path: packages
 
       - uses: actions/setup-go@v5
+        if: env.RUN_JOB == 'true'
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
           check-latest: true
 
       - name: Set version
+        if: env.RUN_JOB == 'true'
         run: |
           version=$(go run build.go version)
           echo "VERSION=$version" >> $GITHUB_ENV
 
       - name: Push to object store (${{ env.VERSION }})
+        if: env.RUN_JOB == 'true'
         uses: docker://docker.io/rclone/rclone:latest
         env:
           RCLONE_CONFIG_OBJSTORE_TYPE: s3
@@ -793,6 +845,7 @@ jobs:
           args: sync -v packages objstore:release/${{ env.VERSION }}
 
       - name: Push to object store (latest)
+        if: env.RUN_JOB == 'true'
         uses: docker://docker.io/rclone/rclone:latest
         env:
           RCLONE_CONFIG_OBJSTORE_TYPE: s3
@@ -811,24 +864,32 @@ jobs:
 
   publish-apt:
     name: Publish APT
-    if: ${{ secrets.S3_REGION != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
     environment: release
     needs:
       - package-debian
     runs-on: ubuntu-latest
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.S3_REGION }}" && \
+            echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+
       - uses: actions/checkout@v4
+        if: env.RUN_JOB == 'true'
         with:
           fetch-depth: 0
           ref: ${{ github.ref }} # https://github.com/actions/checkout/issues/882
 
       - name: Download packages
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@v4
         with:
           name: debian-packages
           path: packages
 
       - name: Set version
+        if: env.RUN_JOB == 'true'
         run: |
           version=$(go run build.go version)
           echo "Version: $version"
@@ -836,6 +897,7 @@ jobs:
 
       # Decide whether packages should go to stable, candidate or nightly
       - name: Prepare packages
+        if: env.RUN_JOB == 'true'
         run: |
           kind=stable
           if [[ $VERSION == *-rc.[0-9] ]] ; then
@@ -848,6 +910,7 @@ jobs:
           mv packages/*.deb packages/syncthing/$kind
 
       - name: Pull archive
+        if: env.RUN_JOB == 'true'
         uses: docker://docker.io/rclone/rclone:latest
         env:
           RCLONE_CONFIG_OBJSTORE_TYPE: s3
@@ -861,6 +924,7 @@ jobs:
           args: sync objstore:apt/dists dists
 
       - name: Update archive
+        if: env.RUN_JOB == 'true'
         uses: docker://ghcr.io/kastelo/ezapt:latest
         with:
           args:
@@ -871,6 +935,7 @@ jobs:
           EZAPT_KEYRING_BASE64: ${{ secrets.APT_GPG_KEYRING_BASE64 }}
 
       - name: Push archive
+        if: env.RUN_JOB == 'true'
         uses: docker://docker.io/rclone/rclone:latest
         env:
           RCLONE_CONFIG_OBJSTORE_TYPE: s3
@@ -890,7 +955,7 @@ jobs:
   docker-syncthing:
     name: Build and push Docker images
     runs-on: ubuntu-latest
-    if: ${{ secrets.DOCKERHUB_USERNAME != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || github.ref == 'refs/heads/infrastructure' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || github.ref == 'refs/heads/infrastructure' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
     environment: docker
     permissions:
       contents: read
@@ -912,23 +977,32 @@ jobs:
             dockerfile: Dockerfile.stdiscosrv
             image: syncthing/discosrv
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.DOCKERHUB_USERNAME }}" && \
+            echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+
       - uses: actions/checkout@v4
+        if: env.RUN_JOB == 'true'
         with:
           fetch-depth: 0
           ref: ${{ github.ref }} # https://github.com/actions/checkout/issues/882
 
       - uses: actions/setup-go@v5
+        if: env.RUN_JOB == 'true'
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
           check-latest: true
 
       - name: Get actual Go version
+        if: env.RUN_JOB == 'true'
         run: |
           go version
           echo "GO_VERSION=$(go version | sed 's#^.*go##;s# .*##')" >> $GITHUB_ENV
 
       - uses: actions/cache@v4
+        if: env.RUN_JOB == 'true'
         with:
           path: |
             ~/.cache/go-build
@@ -936,6 +1010,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-docker-${{ matrix.pkg }}-${{ hashFiles('**/go.sum') }}
 
       - name: Build binaries
+        if: env.RUN_JOB == 'true'
         run: |
           for arch in amd64 arm64 arm; do
             go run build.go -goos linux -goarch "$arch" -no-upgrade build ${{ matrix.pkg }}
@@ -946,6 +1021,7 @@ jobs:
           BUILD_USER: docker
 
       - name: Check if we will be able to push images
+        if: env.RUN_JOB == 'true'
         run: |
           if [[ "${{ secrets.DOCKERHUB_TOKEN }}" != "" ]]; then
             echo "DOCKER_PUSH=true" >> $GITHUB_ENV;
@@ -968,9 +1044,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
+        if: env.RUN_JOB == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Set version tags
+        if: env.RUN_JOB == 'true'
         run: |
           version=$(go run build.go version)
           version=${version#v}
@@ -990,6 +1068,7 @@ jobs:
           echo "VERSION=$version" >> $GITHUB_ENV
 
       - name: Build and push Docker image
+        if: env.RUN_JOB == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .

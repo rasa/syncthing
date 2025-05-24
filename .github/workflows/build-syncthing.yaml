@@ -194,7 +194,7 @@ jobs:
 
   codesign-windows:
     name: Codesign for Windows
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
+    if: ${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
     environment: release
     runs-on: windows-latest
     needs:
@@ -215,7 +215,6 @@ jobs:
           }
 
       - name: Sign files with Trusted Signing
-        if: secrets.AZURE_TRUSTED_SIGNING_TENANT_ID != ''
         uses: azure/trusted-signing-action@v0.5.1
         with:
           azure-tenant-id: ${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID }}
@@ -330,7 +329,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-package-${{ hashFiles('**/go.sum') }}
 
       - name: Import signing certificate
-        if: secrets.CODESIGN_IDENTITY != ''
+        if: ${{ secrets.CODESIGN_IDENTITY != '' }}
         run: |
           # Set up a run-specific keychain, making it available for the
           # `codesign` tool.
@@ -403,7 +402,7 @@ jobs:
 
   notarize-macos:
     name: Notarize for macOS
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
+    if: ${{ secrets.APPSTORECONNECT_API_KEY_ISSUER != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
     environment: release
     needs:
       - package-macos
@@ -415,7 +414,6 @@ jobs:
           name: packages-macos
 
       - name: Notarize binaries
-        if: secrets.APPSTORECONNECT_API_KEY_ISSUER != ''
         run: |
           APPSTORECONNECT_API_KEY_PATH="$RUNNER_TEMP/apikey.p8"
           echo "$APPSTORECONNECT_API_KEY" | base64 -d -o "$APPSTORECONNECT_API_KEY_PATH"
@@ -548,7 +546,7 @@ jobs:
 
   sign-for-upgrade:
     name: Sign for upgrade
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-')  || startsWith(github.ref, 'refs/tags/v'))
+    if: ${{ secrets.STSIGTOOL_PRIVATE_KEY != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-')  || startsWith(github.ref, 'refs/tags/v')) }}
     environment: release
     needs:
       - codesign-windows
@@ -583,7 +581,6 @@ jobs:
           go install ./cmd/dev/stsigtool
 
       - name: Sign archives
-        if: secrets.STSIGTOOL_PRIVATE_KEY != ''
         run: |
           export PRIVATE_KEY="$RUNNER_TEMP/privkey.pem"
           export PATH="$PATH:$(go env GOPATH)/bin"
@@ -617,7 +614,7 @@ jobs:
           EZAPT_KEYRING_BASE64: ${{ secrets.APT_GPG_KEYRING_BASE64 }}
 
       - name: Sign source
-        if: secrets.APT_GPG_KEYRING_BASE64 != ''
+        if: ${{ secrets.APT_GPG_KEYRING_BASE64 != '' }}
         uses: docker://ghcr.io/kastelo/ezapt:latest
         with:
           args:
@@ -697,7 +694,7 @@ jobs:
 
   publish-nightly:
     name: Publish nightly build
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/heads/release-nightly')
+    if: ${{ secrets.S3_REGION != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/heads/release-nightly') }}
     environment: release
     needs:
       - sign-for-upgrade
@@ -729,7 +726,6 @@ jobs:
           BASE_URL: ${{ secrets.NIGHTLY_BASE_URL }}
 
       - name: Push artifacts
-        if: secrets.S3_REGION != ''
         uses: docker://docker.io/rclone/rclone:latest
         env:
           RCLONE_CONFIG_OBJSTORE_TYPE: s3
@@ -748,7 +744,7 @@ jobs:
 
   publish-release-files:
     name: Publish release files
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/tags/v'))
+    if: ${{ secrets.S3_REGION != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/tags/v')) }}
     environment: release
     needs:
       - sign-for-upgrade
@@ -815,7 +811,7 @@ jobs:
 
   publish-apt:
     name: Publish APT
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
+    if: ${{ secrets.S3_REGION != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
     environment: release
     needs:
       - package-debian
@@ -894,7 +890,7 @@ jobs:
   docker-syncthing:
     name: Build and push Docker images
     runs-on: ubuntu-latest
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || github.ref == 'refs/heads/infrastructure' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v'))
+    if: ${{ secrets.DOCKERHUB_USERNAME != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || github.ref == 'refs/heads/infrastructure' || startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) }}
     environment: docker
     permissions:
       contents: read

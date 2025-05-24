@@ -215,6 +215,7 @@ jobs:
           }
 
       - name: Sign files with Trusted Signing
+        if: secrets.AZURE_TRUSTED_SIGNING_TENANT_ID != ''
         uses: azure/trusted-signing-action@v0.5.1
         with:
           azure-tenant-id: ${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID }}
@@ -329,6 +330,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-package-${{ hashFiles('**/go.sum') }}
 
       - name: Import signing certificate
+        if: secrets.CODESIGN_IDENTITY != ''
         run: |
           # Set up a run-specific keychain, making it available for the
           # `codesign` tool.
@@ -413,6 +415,7 @@ jobs:
           name: packages-macos
 
       - name: Notarize binaries
+        if: secrets.APPSTORECONNECT_API_KEY_ISSUER != ''
         run: |
           APPSTORECONNECT_API_KEY_PATH="$RUNNER_TEMP/apikey.p8"
           echo "$APPSTORECONNECT_API_KEY" | base64 -d -o "$APPSTORECONNECT_API_KEY_PATH"
@@ -580,6 +583,7 @@ jobs:
           go install ./cmd/dev/stsigtool
 
       - name: Sign archives
+        if: secrets.STSIGTOOL_PRIVATE_KEY != ''
         run: |
           export PRIVATE_KEY="$RUNNER_TEMP/privkey.pem"
           export PATH="$PATH:$(go env GOPATH)/bin"
@@ -613,6 +617,7 @@ jobs:
           EZAPT_KEYRING_BASE64: ${{ secrets.APT_GPG_KEYRING_BASE64 }}
 
       - name: Sign source
+        if: secrets.APT_GPG_KEYRING_BASE64 != ''
         uses: docker://ghcr.io/kastelo/ezapt:latest
         with:
           args:
@@ -724,6 +729,7 @@ jobs:
           BASE_URL: ${{ secrets.NIGHTLY_BASE_URL }}
 
       - name: Push artifacts
+        if: secrets.S3_REGION != ''
         uses: docker://docker.io/rclone/rclone:latest
         env:
           RCLONE_CONFIG_OBJSTORE_TYPE: s3

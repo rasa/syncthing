@@ -315,6 +315,11 @@ jobs:
     environment: release
     runs-on: macos-latest
     steps:
+      - name: Check if the secrets are defined for this job
+        run: |
+          test -n "${{ secrets.secrets.CODESIGN_IDENTITY }}" && \
+            echo "RUN_STEP=true" >>"${GITHUB_ENV}"
+  
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -339,7 +344,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-package-${{ hashFiles('**/go.sum') }}
 
       - name: Import signing certificate
-        if: ${{ secrets.CODESIGN_IDENTITY != '' }}
+        if: env.RUN_STEP == 'true'
         run: |
           # Set up a run-specific keychain, making it available for the
           # `codesign` tool.

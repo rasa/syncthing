@@ -71,20 +71,25 @@ jobs:
         run: |
           go run build.go
 
+      - name: Check if the secrets are defined for the next steps
+        run: |
+          test -n "${{ secrets.LOKI_URL }}" && \
+            echo "RUN_LOKI=true" >>"${GITHUB_ENV}"
+
       - name: Install go-test-json-to-loki
+        if: env.RUN_LOKI == 'true'
         run: |
           go install calmh.dev/go-test-json-to-loki@latest
 
       - name: Test
         run: |
           go version
-          if [[ -n "${{ secrets.LOKI_URL }}" ]]; then
-            go run build.go test | go-test-json-to-loki
-          else
-            go run build.go test
-          if
+          if [[ "${{ env.RUN_LOKI }}" = true ]]; then
+            LOKI_CMD="| go-test-json-to-loki"
+            export GOFLAGS="-json"
+          fi
+          go run build.go test ${LOKI_CMD}
         env:
-          GOFLAGS: "-json"
           LOKI_URL: ${{ secrets.LOKI_URL }}
           LOKI_USER: ${{ secrets.LOKI_USER }}
           LOKI_PASSWORD: ${{ secrets.LOKI_PASSWORD }}

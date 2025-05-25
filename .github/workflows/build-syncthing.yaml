@@ -48,6 +48,9 @@ jobs:
         # Variables don't seem to be supported here, or we could have done something nice.
         go: ["~1.23.0", "~1.24.0"]
     runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Set git to use LF
         if: matrix.runner == 'windows-latest'
@@ -210,6 +213,7 @@ jobs:
       - package-windows
     steps:
       - name: Check if the secrets are defined for this job
+        shell: bash
         run: |
           test -n "${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID }}" && \
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"

@@ -76,8 +76,9 @@ jobs:
 
       - name: Check if the secrets are defined for the next steps
         run: |
-          test -n "${{ secrets.LOKI_URL }}" && \
+          if [[ -n "${{ secrets.LOKI_URL }}" ]]; then
             echo "RUN_LOKI=true" >>"${GITHUB_ENV}"
+          fi
 
       - name: Install go-test-json-to-loki
         if: env.RUN_LOKI == 'true'
@@ -215,8 +216,9 @@ jobs:
       - name: Check if the secrets are defined for this job
         shell: bash
         run: |
-          test -n "${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID }}" && \
+          if [[ -n "${{ secrets.AZURE_TRUSTED_SIGNING_TENANT_ID }}" ]]; then
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+          fi
 
       - name: Download artifacts
         if: env.RUN_JOB == 'true'
@@ -330,8 +332,9 @@ jobs:
     steps:
       - name: Check if the secrets are defined for this job
         run: |
-          test -n "${{ secrets.secrets.CODESIGN_IDENTITY }}" && \
+          if [[ -n "${{ secrets.secrets.CODESIGN_IDENTITY }}" ]]; then
             echo "RUN_SIGNING_STEP=true" >>"${GITHUB_ENV}"
+          fi
   
       - uses: actions/checkout@v4
         with:
@@ -438,8 +441,9 @@ jobs:
     steps:
       - name: Check if the secrets are defined for this job
         run: |
-          test -n "${{ secrets.APPSTORECONNECT_API_KEY_ISSUER }}" && \
+          if [[ -n "${{ secrets.APPSTORECONNECT_API_KEY_ISSUER }}" ]]; then
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+          fi
 
       - name: Download artifacts
         if: env.RUN_JOB == 'true'
@@ -593,8 +597,9 @@ jobs:
     steps:
       - name: Check if the secrets are defined for this job
         run: |
-          test -n "${{ secrets.STSIGTOOL_PRIVATE_KEY }}" && \
+          if [[ -n "${{ secrets.STSIGTOOL_PRIVATE_KEY }}" ]]; then
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+          fi
 
       - uses: actions/checkout@v4
         if: env.RUN_JOB == 'true'
@@ -751,8 +756,9 @@ jobs:
     steps:
       - name: Check if the secrets are defined for this job
         run: |
-          test -n "${{ secrets.S3_REGION }}" && \
+          if [[ -n "${{ secrets.S3_REGION }}" ]]; then
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+          fi
   
       - uses: actions/checkout@v4
         if: env.RUN_JOB == 'true'
@@ -812,8 +818,9 @@ jobs:
     steps:
       - name: Check if the secrets are defined for this job
         run: |
-          test -n "${{ secrets.S3_REGION }}" && \
+          if [[ -n "${{ secrets.S3_REGION }}" ]]; then
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+          fi
 
       - uses: actions/checkout@v4
         if: env.RUN_JOB == 'true'
@@ -890,8 +897,9 @@ jobs:
     steps:
       - name: Check if the secrets are defined for this job
         run: |
-          test -n "${{ secrets.S3_REGION }}" && \
+          if [[ -n "${{ secrets.S3_REGION }}" ]]; then
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+          fi
 
       - uses: actions/checkout@v4
         if: env.RUN_JOB == 'true'
@@ -997,8 +1005,9 @@ jobs:
     steps:
       - name: Check if the secrets are defined for this job
         run: |
-          test -n "${{ secrets.DOCKERHUB_USERNAME }}" && \
+          if [[ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]]; then
             echo "RUN_JOB=true" >>"${GITHUB_ENV}"
+          fi
 
       - uses: actions/checkout@v4
         if: env.RUN_JOB == 'true'

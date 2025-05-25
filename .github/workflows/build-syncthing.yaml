@@ -78,7 +78,11 @@ jobs:
       - name: Test
         run: |
           go version
-          go run build.go test | go-test-json-to-loki
+          if [[ -n "${{ secrets.LOKI_URL }}" ]]; then
+            go run build.go test | go-test-json-to-loki
+          else
+            go run build.go test
+          if
         env:
           GOFLAGS: "-json"
           LOKI_URL: ${{ secrets.LOKI_URL }}
@@ -318,7 +322,7 @@ jobs:
       - name: Check if the secrets are defined for this job
         run: |
           test -n "${{ secrets.secrets.CODESIGN_IDENTITY }}" && \
-            echo "RUN_STEP=true" >>"${GITHUB_ENV}"
+            echo "RUN_SIGNING_STEP=true" >>"${GITHUB_ENV}"
   
       - uses: actions/checkout@v4
         with:
@@ -344,7 +348,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-package-${{ hashFiles('**/go.sum') }}
 
       - name: Import signing certificate
-        if: env.RUN_STEP == 'true'
+        if: env.RUN_SIGNING_STEP == 'true'
         run: |
           # Set up a run-specific keychain, making it available for the
           # `codesign` tool.

@@ -50,7 +50,7 @@ func startInstance(t *testing.T) *instance {
 	}
 
 	// Start Syncthing with the config and API key.
-	cmd := exec.Command(syncthingBinary, "--no-browser", "--no-default-folder", "--home", syncthingDir)
+	cmd := exec.Command(syncthingBinary, "--no-browser", "--home", syncthingDir)
 	cmd.Env = append(basicEnv(userHomeDir), "STGUIAPIKEY="+inst.apiKey)
 	rd, wr := io.Pipe()
 	cmd.Stdout = wr

@@ -21,7 +21,7 @@ import (
 	"github.com/syncthing/syncthing/lib/rc"
 )
 
-const indexDbDir = "index-v0.14.0.db"
+const indexDbDir = "index-v2"
 
 var generatedFiles = []string{"config.xml", "cert.pem", "key.pem"}
 
@@ -33,27 +33,27 @@ func TestCLIVersion(t *testing.T) {
 	// The process cannot access the file because it is being used by another process.
 	// Also, if this test fails, all tests will fail.
 
-	cmd := exec.Command(syncthingBinary, "--version")
+	cmd := exec.Command(syncthingBinary, "version")
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stdout
 
 	err := cmd.Run()
 	if err != nil {
-		t.Logf("syncthing --version returned: %v", err)
+		t.Logf("syncthing version returned: %v", err)
 	}
 
 	output := stdout.String()
 	parts := strings.Split(output, " ")
 	if len(parts) < 2 {
-		t.Errorf("Expected a space in --version output, got %q", output)
+		t.Errorf("Expected a space in version output, got %q", output)
 		return
 	}
 	Version := parts[1]
 	if Version != "unknown-dev" {
 		// If not a generic dev build, version string should come from git describe
 		if !allowedVersionExp.MatchString(Version) {
-			t.Fatalf("Invalid version string %q;\n\tdoes not match regexp %v;\n\t`syncthing --version` returned %q", Version, allowedVersionExp, output)
+			t.Fatalf("Invalid version string %q;\n\tdoes not match regexp %v;\n\t`syncthing version` returned %q", Version, allowedVersionExp, output)
 		}
 	}
 }
@@ -105,7 +105,7 @@ func TestCLIReset(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(syncthingBinary, "--no-browser", "--no-default-folder", "--home", instance.syncthingDir, "--reset-database")
+	cmd := exec.Command(syncthingBinary, "--no-browser", "--home", instance.syncthingDir, "debug", "reset-database")
 	cmd.Env = basicEnv(instance.userHomeDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
@@ -123,9 +123,9 @@ func TestCLIReset(t *testing.T) {
 func TestCLIGenerate(t *testing.T) {
 	syncthingDir := t.TempDir()
 	userHomeDir := t.TempDir()
-	generateDir := t.TempDir()
+	// generateDir := t.TempDir()
 
-	cmd := exec.Command(syncthingBinary, "--no-browser", "--no-default-folder", "--home", syncthingDir, "--generate", generateDir)
+	cmd := exec.Command(syncthingBinary, "--no-browser", "--home", syncthingDir, "generate")
 	cmd.Env = basicEnv(userHomeDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
@@ -134,7 +134,7 @@ func TestCLIGenerate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	found := walk(t, generateDir)
+	found := walk(t, syncthingDir)
 	// Sort list so binary search works.
 	sort.Strings(found)
 
@@ -142,7 +142,7 @@ func TestCLIGenerate(t *testing.T) {
 	for _, want := range generatedFiles {
 		_, ok := slices.BinarySearch(found, want)
 		if !ok {
-			t.Errorf("expected to find %q in %q", want, generateDir)
+			t.Errorf("expected to find %q in %q", want, syncthingDir)
 		}
 	}
 }

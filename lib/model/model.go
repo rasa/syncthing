@@ -195,7 +195,7 @@ var (
 	ErrFolderMissing    = errors.New("no such folder")
 	errNoVersioner      = errors.New("folder has no versioner")
 	// errors about why a connection is closed
-	errStopped                            = errors.New("Syncthing is being stopped")
+	errStopped                            = errors.New("Syncthing is being stopped") //nolint:staticcheck
 	errEncryptionInvConfigLocal           = errors.New("can't encrypt outgoing data because local data is encrypted (folder-type receive-encrypted)")
 	errEncryptionInvConfigRemote          = errors.New("remote has encrypted data and encrypts that data for us - this is impossible")
 	errEncryptionNotEncryptedLocal        = errors.New("remote expects to exchange encrypted data, but is configured for plain data")
@@ -372,7 +372,7 @@ func (m *model) addAndStartFolderLockedWithIgnores(cfg config.FolderConfiguratio
 	for _, available := range devs {
 		if _, ok := expected[available]; !ok {
 			l.Debugln("dropping", folder, "state for", available)
-			m.sdb.DropAllFiles(folder, available)
+			_ = m.sdb.DropAllFiles(folder, available)
 		}
 	}
 
@@ -493,7 +493,7 @@ func (m *model) removeFolder(cfg config.FolderConfiguration) {
 	m.mut.Unlock()
 
 	// Remove it from the database
-	m.sdb.DropFolder(cfg.ID)
+	_ = m.sdb.DropFolder(cfg.ID)
 }
 
 // Need to hold lock on m.mut when calling this.
@@ -622,24 +622,26 @@ func (m *model) UsageReportingStats(report *contract.Report, version int, previe
 
 			for _, line := range lines {
 				// Allow prefixes to be specified in any order, but only once.
+			loop:
 				for {
-					if strings.HasPrefix(line, "!") && !seenPrefix[0] {
+					switch {
+					case strings.HasPrefix(line, "!") && !seenPrefix[0]:
 						seenPrefix[0] = true
 						line = line[1:]
 						report.IgnoreStats.Inverts++
-					} else if strings.HasPrefix(line, "(?i)") && !seenPrefix[1] {
+					case strings.HasPrefix(line, "(?i)") && !seenPrefix[1]:
 						seenPrefix[1] = true
 						line = line[4:]
 						report.IgnoreStats.Folded++
-					} else if strings.HasPrefix(line, "(?d)") && !seenPrefix[2] {
+					case strings.HasPrefix(line, "(?d)") && !seenPrefix[2]:
 						seenPrefix[2] = true
 						line = line[4:]
 						report.IgnoreStats.Deletable++
-					} else {
+					default:
 						seenPrefix[0] = false
 						seenPrefix[1] = false
 						seenPrefix[2] = false
-						break
+						break loop
 					}
 				}
 
@@ -1227,9 +1229,10 @@ func (m *model) ClusterConfig(conn protocol.Connection, cm *protocol.ClusterConf
 	for _, folder := range cm.Folders {
 		info := &clusterConfigDeviceInfo{}
 		for _, dev := range folder.Devices {
-			if dev.ID == m.id {
+			switch dev.ID {
+			case m.id:
 				info.local = dev
-			} else if dev.ID == deviceID {
+			case deviceID:
 				info.remote = dev
 			}
 			if info.local.ID != protocol.EmptyDeviceID && info.remote.ID != protocol.EmptyDeviceID {
@@ -1451,7 +1454,7 @@ func (m *model) ccHandleFolders(folders []protocol.Folder, deviceCfg config.Devi
 			sameError := false
 			m.mut.Lock()
 			if devs, ok := m.folderEncryptionFailures[folder.ID]; ok {
-				sameError = devs[deviceID] == err
+				sameError = devs[deviceID] == err //nolint:errorlint
 			} else {
 				m.folderEncryptionFailures[folder.ID] = make(map[protocol.DeviceID]error)
 			}
@@ -1461,7 +1464,8 @@ func (m *model) ccHandleFolders(folders []protocol.Folder, deviceCfg config.Devi
 			if sameError {
 				l.Debugln(msg)
 			} else {
-				if rerr, ok := err.(*redactedError); ok {
+				var rerr *redactedError
+				if errors.As(err, &rerr) {
 					err = rerr.redacted
 				}
 				m.evLogger.Log(events.Failure, err.Error())
@@ -1559,7 +1563,7 @@ func (m *model) ccCheckEncryption(fcfg config.FolderConfiguration, folderDevice 
 
 	if isEncryptedRemote {
 		passwordToken := protocol.PasswordToken(m.keyGen, fcfg.ID, folderDevice.EncryptionPassword)
-		match := false
+		var match bool
 		if hasTokenLocal {
 			match = bytes.Equal(passwordToken, ccDeviceInfos.local.EncryptionPasswordToken)
 		} else {
@@ -1641,8 +1645,7 @@ func (m *model) sendClusterConfig(ids []protocol.DeviceID) {
 	// Generating cluster-configs acquires the mutex.
 	for _, conn := range ccConns {
 		cm, passwords := m.generateClusterConfig(conn.DeviceID())
-		conn.SetFolderPasswords(passwords)
-		go conn.ClusterConfig(cm)
+		go conn.ClusterConfig(cm, passwords)
 	}
 }
 
@@ -1817,11 +1820,9 @@ func (m *model) handleAutoAccepts(deviceID protocol.DeviceID, folder protocol.Fo
 		l.Infof("Failed to auto-accept folder %s from %s due to path conflict", folder.Description(), deviceID)
 		return config.FolderConfiguration{}, false
 	} else {
-		for _, device := range cfg.DeviceIDs() {
-			if device == deviceID {
-				// Already shared nothing todo.
-				return config.FolderConfiguration{}, false
-			}
+		if slices.Contains(cfg.DeviceIDs(), deviceID) {
+			// Already shared nothing todo.
+			return config.FolderConfiguration{}, false
 		}
 		if cfg.Type == config.FolderTypeReceiveEncrypted {
 			if len(ccDeviceInfos.remote.EncryptionPasswordToken) == 0 && len(ccDeviceInfos.local.EncryptionPasswordToken) == 0 {
@@ -2018,7 +2019,7 @@ func (m *model) Request(conn protocol.Connection, req *protocol.Request) (out pr
 
 	// The requestResponse releases the bytes to the buffer pool and the
 	// limiters when its Close method is called.
-	res := newLimitedRequestResponse(int(req.Size), limiter, m.globalRequestLimiter)
+	res := newLimitedRequestResponse(req.Size, limiter, m.globalRequestLimiter)
 
 	defer func() {
 		// Close it ourselves if it isn't returned due to an error
@@ -2064,16 +2065,17 @@ func (m *model) Request(conn protocol.Connection, req *protocol.Request) (out pr
 	}
 
 	n, err := readOffsetIntoBuf(folderFs, req.Name, req.Offset, res.data)
-	if fs.IsNotExist(err) {
+	switch {
+	case fs.IsNotExist(err):
 		l.Debugf("%v REQ(in) file doesn't exist: %s: %q / %q o=%d s=%d", m, deviceID.Short(), req.Folder, req.Name, req.Offset, req.Size)
 		return nil, protocol.ErrNoSuchFile
-	} else if err == io.EOF {
+	case errors.Is(err, io.EOF):
 		// Read beyond end of file. This might indicate a problem, or it
 		// might be a short block that gets padded when read for encrypted
 		// folders. We ignore the error and let the hash validation in the
 		// next step take care of it, by only hashing the part we actually
 		// managed to read.
-	} else if err != nil {
+	case err != nil:
 		l.Debugf("%v REQ(in) failed reading file (%v): %s: %q / %q o=%d s=%d", m, err, deviceID.Short(), req.Folder, req.Name, req.Offset, req.Size)
 		return nil, protocol.ErrGeneric
 	}
@@ -2233,13 +2235,13 @@ func (m *model) SetIgnores(folder string, content []string) error {
 
 func (m *model) setIgnores(cfg config.FolderConfiguration, content []string) error {
 	err := cfg.CheckPath()
-	if err == config.ErrPathMissing {
+	if errors.Is(err, config.ErrPathMissing) {
 		if err = cfg.CreateRoot(); err != nil {
 			return fmt.Errorf("failed to create folder root: %w", err)
 		}
 		err = cfg.CheckPath()
 	}
-	if err != nil && err != config.ErrMarkerMissing {
+	if err != nil && !errors.Is(err, config.ErrMarkerMissing) {
 		return err
 	}
 
@@ -2359,8 +2361,14 @@ func (m *model) scheduleConnectionPromotion() {
 // be called after adding new connections, and after closing a primary
 // device connection.
 func (m *model) promoteConnections() {
+	// Slice of actions to take on connections after releasing the main
+	// mutex. We do this so that we do not perform blocking network actions
+	// inside the loop, and also to avoid a possible deadlock with calling
+	// Start() on connections that are already executing a Close() with a
+	// callback into the model...
+	var postLockActions []func()
+
 	m.mut.Lock()
-	defer m.mut.Unlock()
 
 	for deviceID, connIDs := range m.deviceConnIDs {
 		cm, passwords := m.generateClusterConfigRLocked(deviceID)
@@ -2373,11 +2381,12 @@ func (m *model) promoteConnections() {
 			// on where we get ClusterConfigs from the peer.)
 			conn := m.connections[connIDs[0]]
 			l.Debugf("Promoting connection to %s at %s", deviceID.Short(), conn)
-			if conn.Statistics().StartedAt.IsZero() {
-				conn.SetFolderPasswords(passwords)
-				conn.Start()
-			}
-			conn.ClusterConfig(cm)
+			postLockActions = append(postLockActions, func() {
+				if conn.Statistics().StartedAt.IsZero() {
+					conn.Start()
+				}
+				conn.ClusterConfig(cm, passwords)
+			})
 			m.promotedConnID[deviceID] = connIDs[0]
 		}
 
@@ -2386,11 +2395,18 @@ func (m *model) promoteConnections() {
 		for _, connID := range connIDs[1:] {
 			conn := m.connections[connID]
 			if conn.Statistics().StartedAt.IsZero() {
-				conn.SetFolderPasswords(passwords)
-				conn.Start()
-				conn.ClusterConfig(&protocol.ClusterConfig{Secondary: true})
+				postLockActions = append(postLockActions, func() {
+					conn.Start()
+					conn.ClusterConfig(&protocol.ClusterConfig{Secondary: true}, passwords)
+				})
 			}
 		}
+	}
+
+	m.mut.Unlock()
+
+	for _, action := range postLockActions {
+		action()
 	}
 }
 
@@ -2487,7 +2503,6 @@ func (m *model) ScanFolders() map[string]error {
 	wg := sync.NewWaitGroup()
 	wg.Add(len(folders))
 	for _, folder := range folders {
-		folder := folder
 		go func() {
 			err := m.ScanFolder(folder)
 			if err != nil {
@@ -2666,7 +2681,7 @@ func (m *model) WatchError(folder string) error {
 	runner, _ := m.folderRunners.Get(folder)
 	m.mut.RUnlock()
 	if err != nil {
-		return nil // If the folder isn't running, there's no error to report.
+		return nil //nolint:nilerr // If the folder isn't running, there's no error to report.
 	}
 	return runner.WatchError()
 }
@@ -2733,7 +2748,7 @@ func (m *model) GlobalDirectoryTree(folder, prefix string, levels int, dirsOnly 
 	prefix = osutil.NativeFilename(prefix)
 
 	if prefix != "" && !strings.HasSuffix(prefix, sep) {
-		prefix = prefix + sep
+		prefix += sep
 	}
 
 	for f, err := range itererr.Zip(m.sdb.AllGlobalFilesPrefix(folder, prefix)) {
@@ -3445,8 +3460,8 @@ type updatedPendingFolder struct {
 // redactPathError checks if the error is actually a os.PathError, and if yes
 // returns a redactedError with the path removed.
 func redactPathError(err error) (error, bool) {
-	perr, ok := err.(*os.PathError)
-	if !ok {
+	var perr *os.PathError
+	if !errors.As(err, &perr) {
 		return nil, false
 	}
 	return &redactedError{

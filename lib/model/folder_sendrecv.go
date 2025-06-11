@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -136,7 +136,7 @@ func newSendReceiveFolder(model *model, ignores *ignore.Matcher, cfg config.Fold
 		blockPullReorderer: newBlockPullReorderer(cfg.BlockPullOrder, model.id, cfg.DeviceIDs()),
 		writeLimiter:       semaphore.New(cfg.MaxConcurrentWrites),
 	}
-	f.folder.puller = f
+	f.puller = f
 
 	if f.Copiers == 0 {
 		f.Copiers = defaultCopiers
@@ -179,7 +179,7 @@ func (f *sendReceiveFolder) pull() (bool, error) {
 	f.errorsMut.Unlock()
 
 	var err error
-	for tries := 0; tries < maxPullerIterations; tries++ {
+	for tries := range maxPullerIterations {
 		select {
 		case <-f.ctx.Done():
 			return false, f.ctx.Err()
@@ -259,7 +259,7 @@ func (f *sendReceiveFolder) pullerIteration(scanChan chan<- string) (int, error)
 		updateWg.Done()
 	}()
 
-	for i := 0; i < f.Copiers; i++ {
+	for range f.Copiers {
 		copyWg.Add(1)
 		go func() {
 			// copierRoutine finishes when copyChan is closed
@@ -359,13 +359,14 @@ loop:
 			}
 
 		case file.IsDeleted():
-			if file.IsDirectory() {
+			switch {
+			case file.IsDirectory():
 				// Perform directory deletions at the end, as we may have
 				// files to delete inside them before we get to that point.
 				dirDeletions = append(dirDeletions, file)
-			} else if file.IsSymlink() {
+			case file.IsSymlink():
 				f.deleteFile(file, dbUpdateChan, scanChan)
-			} else {
+			default:
 				df, ok, err := f.model.sdb.GetDeviceFile(f.folderID, protocol.LocalDeviceID, file.Name)
 				if err != nil {
 					return changed, nil, nil, err
@@ -976,7 +977,7 @@ func (f *sendReceiveFolder) renameFile(cur, source, target protocol.FileInfo, db
 	}
 	switch stat, serr := f.mtimefs.Lstat(target.Name); {
 	case serr != nil:
-		var caseErr *fs.ErrCaseConflict
+		var caseErr *fs.CaseConflictError
 		switch {
 		case errors.As(serr, &caseErr):
 			if caseErr.Real != source.Name {
@@ -1023,7 +1024,7 @@ func (f *sendReceiveFolder) renameFile(cur, source, target protocol.FileInfo, db
 	tempName := fs.TempName(target.Name)
 
 	if f.versioner != nil {
-		err = f.CheckAvailableSpace(uint64(source.Size))
+		err = f.CheckAvailableSpace(uint64(source.Size)) //nolint:gosec
 		if err == nil {
 			err = osutil.Copy(f.CopyRangeMethod.ToFS(), f.mtimefs, f.mtimefs, source.Name, tempName)
 			if err == nil {
@@ -1148,7 +1149,7 @@ func (f *sendReceiveFolder) reuseBlocks(blocks []protocol.BlockInfo, reused []in
 	// reuse.
 	tempBlocks, err := scanner.HashFile(f.ctx, f.ID, f.mtimefs, tempName, file.BlockSize(), nil)
 	if err != nil {
-		var caseErr *fs.ErrCaseConflict
+		var caseErr *fs.CaseConflictError
 		if errors.As(err, &caseErr) {
 			if rerr := f.mtimefs.Rename(caseErr.Real, tempName); rerr == nil {
 				tempBlocks, err = scanner.HashFile(f.ctx, f.ID, f.mtimefs, tempName, file.BlockSize(), nil)
@@ -1286,32 +1287,18 @@ func (f *sendReceiveFolder) shortcutFile(file protocol.FileInfo, dbUpdateChan ch
 // copierRoutine reads copierStates until the in channel closes and performs
 // the relevant copies when possible, or passes it to the puller routine.
 func (f *sendReceiveFolder) copierRoutine(in <-chan copyBlocksState, pullChan chan<- pullBlockState, out chan<- *sharedPullerState) {
-	buf := protocol.BufferPool.Get(protocol.MinBlockSize)
-	defer func() {
-		protocol.BufferPool.Put(buf)
-	}()
-
-	folderFilesystems := make(map[string]fs.Filesystem)
-	// Hope that it's usually in the same folder, so start with that one.
-	folders := []string{f.folderID}
+	otherFolderFilesystems := make(map[string]fs.Filesystem)
 	for folder, cfg := range f.model.cfg.Folders() {
-		folderFilesystems[folder] = cfg.Filesystem()
-		if folder != f.folderID {
-			folders = append(folders, folder)
+		if folder == f.ID {
+			continue
 		}
+		otherFolderFilesystems[folder] = cfg.Filesystem()
 	}
 
 	for state := range in {
-		if err := f.CheckAvailableSpace(uint64(state.file.Size)); err != nil {
+		if err := f.CheckAvailableSpace(uint64(state.file.Size)); err != nil { //nolint:gosec
 			state.fail(err)
 			// Nothing more to do for this failed file, since it would use to much disk space
-			out <- state.sharedPullerState
-			continue
-		}
-
-		dstFd, err := state.tempFile()
-		if err != nil {
-			// Nothing more to do for this failed file, since we couldn't create a temporary for it.
 			out <- state.sharedPullerState
 			continue
 		}
@@ -1342,77 +1329,27 @@ func (f *sendReceiveFolder) copierRoutine(in <-chan copyBlocksState, pullChan ch
 				continue
 			}
 
-			buf = protocol.BufferPool.Upgrade(buf, int(block.Size))
-
-			found := false
-			blocks, _ := f.model.sdb.AllLocalBlocksWithHash(block.Hash)
-			for _, e := range blocks {
-				res, err := f.model.sdb.AllLocalFilesWithBlocksHashAnyFolder(e.BlocklistHash)
-				if err != nil {
-					continue
-				}
-				for folderID, files := range res {
-					ffs := folderFilesystems[folderID]
-					for _, fi := range files {
-						fd, err := ffs.Open(fi.Name)
-						if err != nil {
-							continue
-						}
-						defer fd.Close()
-
-						_, err = fd.ReadAt(buf, e.Offset)
-						if err != nil {
-							fd.Close()
-							continue
-						}
-
-						// Hash is not SHA256 as it's an encrypted hash token. In that
-						// case we can't verify the block integrity so we'll take it on
-						// trust. (The other side can and will verify.)
-						if f.Type != config.FolderTypeReceiveEncrypted {
-							if err := f.verifyBuffer(buf, block); err != nil {
-								l.Debugln("Finder failed to verify buffer", err)
-								continue
-							}
-						}
-
-						if f.CopyRangeMethod != config.CopyRangeMethodStandard {
-							err = f.withLimiter(func() error {
-								dstFd.mut.Lock()
-								defer dstFd.mut.Unlock()
-								return fs.CopyRange(f.CopyRangeMethod.ToFS(), fd, dstFd.fd, e.Offset, block.Offset, int64(block.Size))
-							})
-						} else {
-							err = f.limitedWriteAt(dstFd, buf, block.Offset)
-						}
-						if err != nil {
-							state.fail(fmt.Errorf("dst write: %w", err))
-							break
-						}
-						if fi.Name == state.file.Name {
-							state.copiedFromOrigin(block.Size)
-						} else {
-							state.copiedFromElsewhere(block.Size)
-						}
-						found = true
-						break
-					}
-				}
+			if f.copyBlock(block, state, otherFolderFilesystems) {
+				state.copyDone(block)
+				continue
 			}
 
 			if state.failed() != nil {
 				break
 			}
 
-			if !found {
-				state.pullStarted()
-				ps := pullBlockState{
-					sharedPullerState: state.sharedPullerState,
-					block:             block,
-				}
-				pullChan <- ps
-			} else {
-				state.copyDone(block)
+			state.pullStarted()
+			ps := pullBlockState{
+				sharedPullerState: state.sharedPullerState,
+				block:             block,
+			}
+			pullChan <- ps
+		}
+		// If there are no blocks to pull/copy, we still need the temporary file in place.
+		if len(state.blocks) == 0 {
+			_, err := state.tempFile()
+			if err != nil {
+				state.fail(err)
 			}
 		}
 
@@ -1420,8 +1357,112 @@ func (f *sendReceiveFolder) copierRoutine(in <-chan copyBlocksState, pullChan ch
 	}
 }
 
+// Returns true when the block was successfully copied.
+func (f *sendReceiveFolder) copyBlock(block protocol.BlockInfo, state copyBlocksState, otherFolderFilesystems map[string]fs.Filesystem) bool {
+	buf := protocol.BufferPool.Get(block.Size)
+	defer protocol.BufferPool.Put(buf)
+
+	// Hope that it's usually in the same folder, so start with that
+	// one. Also possibly more efficient copy (same filesystem).
+	if f.copyBlockFromFolder(f.ID, block, state, f.mtimefs, buf) {
+		return true
+	}
+	if state.failed() != nil {
+		return false
+	}
+
+	for folderID, ffs := range otherFolderFilesystems {
+		if f.copyBlockFromFolder(folderID, block, state, ffs, buf) {
+			return true
+		}
+		if state.failed() != nil {
+			return false
+		}
+	}
+
+	return false
+}
+
+// Returns true when the block was successfully copied.
+// The passed buffer must be large enough to accommodate the block.
+func (f *sendReceiveFolder) copyBlockFromFolder(folderID string, block protocol.BlockInfo, state copyBlocksState, ffs fs.Filesystem, buf []byte) bool {
+	for e, err := range itererr.Zip(f.model.sdb.AllLocalBlocksWithHash(folderID, block.Hash)) {
+		if err != nil {
+			// We just ignore this and continue pulling instead (though
+			// there's a good chance that will fail too, if the DB is
+			// unhealthy).
+			l.Debugf("Failed to get information from DB about block %v in copier (folderID %v, file %v): %v", block.Hash, f.folderID, state.file.Name)
+			return false
+		}
+
+		if !f.copyBlockFromFile(e.FileName, e.Offset, state, ffs, block, buf) {
+			if state.failed() != nil {
+				return false
+			}
+			continue
+		}
+
+		if e.FileName == state.file.Name {
+			state.copiedFromOrigin(block.Size)
+		} else {
+			state.copiedFromElsewhere(block.Size)
+		}
+		return true
+	}
+
+	return false
+}
+
+// Returns true when the block was successfully copied.
+// The passed buffer must be large enough to accommodate the block.
+func (f *sendReceiveFolder) copyBlockFromFile(srcName string, srcOffset int64, state copyBlocksState, ffs fs.Filesystem, block protocol.BlockInfo, buf []byte) bool {
+	fd, err := ffs.Open(srcName)
+	if err != nil {
+		l.Debugf("Failed to open file %v trying to copy block %v (folderID %v): %v", srcName, block.Hash, f.folderID, err)
+		return false
+	}
+	defer fd.Close()
+
+	_, err = fd.ReadAt(buf, srcOffset)
+	if err != nil {
+		l.Debugf("Failed to read block from file %v in copier (folderID: %v, hash: %v): %v", srcName, f.folderID, block.Hash, err)
+		return false
+	}
+
+	// Hash is not SHA256 as it's an encrypted hash token. In that
+	// case we can't verify the block integrity so we'll take it on
+	// trust. (The other side can and will verify.)
+	if f.Type != config.FolderTypeReceiveEncrypted {
+		if err := f.verifyBuffer(buf, block); err != nil {
+			l.Debugf("Failed to verify buffer in copier (folderID: %v): %v", f.folderID, err)
+			return false
+		}
+	}
+
+	dstFd, err := state.tempFile()
+	if err != nil {
+		// State is already marked as failed when an error is returned here.
+		return false
+	}
+
+	if f.CopyRangeMethod != config.CopyRangeMethodStandard {
+		err = f.withLimiter(func() error {
+			dstFd.mut.Lock()
+			defer dstFd.mut.Unlock()
+			return fs.CopyRange(f.CopyRangeMethod.ToFS(), fd, dstFd.fd, srcOffset, block.Offset, int64(block.Size))
+		})
+	} else {
+		err = f.limitedWriteAt(dstFd, buf, block.Offset)
+	}
+	if err != nil {
+		state.fail(fmt.Errorf("dst write: %w", err))
+		return false
+	}
+	return true
+}
+
 func (*sendReceiveFolder) verifyBuffer(buf []byte, block protocol.BlockInfo) error {
-	if len(buf) != int(block.Size) {
+	if len(buf) != block.Size {
 		return fmt.Errorf("length mismatch %d != %d", len(buf), block.Size)
 	}
 
@@ -1449,8 +1490,7 @@ func (f *sendReceiveFolder) pullerRoutine(in <-chan pullBlockState, out chan<- *
 		// ongoing at any given time, based on the size of the blocks
 		// themselves.
 
-		state := state
-		bytes := int(state.block.Size)
+		bytes := state.block.Size
 
 		if err := requestLimiter.TakeWithContext(f.ctx, bytes); err != nil {
 			state.fail(err)
@@ -1521,7 +1561,7 @@ loop:
 		activity.using(selected)
 		var buf []byte
 		blockNo := int(state.block.Offset / int64(state.file.BlockSize()))
-		buf, lastError = f.model.RequestGlobal(f.ctx, selected.ID, f.folderID, state.file.Name, blockNo, state.block.Offset, int(state.block.Size), state.block.Hash, selected.FromTemporary)
+		buf, lastError = f.model.RequestGlobal(f.ctx, selected.ID, f.folderID, state.file.Name, blockNo, state.block.Offset, state.block.Size, state.block.Hash, selected.FromTemporary)
 		activity.done(selected)
 		if lastError != nil {
 			l.Debugln("request:", f.folderID, state.file.Name, state.block.Offset, state.block.Size, selected.ID.Short(), "returned error:", lastError)
@@ -1673,7 +1713,7 @@ func (f *sendReceiveFolder) dbUpdaterRoutine(dbUpdateChan <-chan dbUpdateJob) {
 		// sync directories
 		for dir := range changedDirs {
 			delete(changedDirs, dir)
-			if !f.FolderConfiguration.DisableFsync {
+			if !f.DisableFsync {
 				fd, err := f.mtimefs.Open(dir)
 				if err != nil {
 					l.Debugf("fsync %q failed: %v", dir, err)
@@ -1814,7 +1854,9 @@ func (f *sendReceiveFolder) moveForConflict(name, lastModBy string, scanChan cha
 	if f.MaxConflicts > -1 {
 		matches := existingConflicts(name, f.mtimefs)
 		if len(matches) > f.MaxConflicts {
-			sort.Sort(sort.Reverse(sort.StringSlice(matches)))
+			slices.SortFunc(matches, func(a, b string) int {
+				return strings.Compare(b, a)
+			})
 			for _, match := range matches[f.MaxConflicts:] {
 				if gerr := f.mtimefs.Remove(match); gerr != nil {
 					l.Debugln(f, "removing extra conflict", gerr)
@@ -1934,6 +1976,9 @@ func (f *sendReceiveFolder) deleteDirOnDiskHandleChildren(dir string, scanChan c
 			return nil
 		}
 		cf, ok, err := f.model.sdb.GetDeviceFile(f.folderID, protocol.LocalDeviceID, path)
+		if err != nil {
+			return err
+		}
 		switch {
 		case !ok || cf.IsDeleted():
 			// Something appeared in the dir that we either are not
@@ -1951,7 +1996,7 @@ func (f *sendReceiveFolder) deleteDirOnDiskHandleChildren(dir string, scanChan c
 			// Lets just assume the file has changed.
 			scanChan <- path
 			hasToBeScanned = true
-			return nil
+			return nil //nolint:nilerr
 		}
 		if !cf.IsEquivalentOptional(diskFile, protocol.FileInfoComparison{
 			ModTimeWindow:   f.modTimeWindow,
@@ -2010,7 +2055,7 @@ func (f *sendReceiveFolder) deleteDirOnDiskHandleChildren(dir string, scanChan c
 // not changed.
 func (f *sendReceiveFolder) scanIfItemChanged(name string, stat fs.FileInfo, item protocol.FileInfo, hasItem bool, fromDelete bool, scanChan chan<- string) (err error) {
 	defer func() {
-		if err == errModified {
+		if errors.Is(err, errModified) {
 			scanChan <- name
 		}
 	}()
@@ -2151,20 +2196,6 @@ func (f *sendReceiveFolder) updateFileInfoChangeTime(file *protocol.FileInfo) er
 type FileError struct {
 	Path string `json:"path"`
 	Err  string `json:"error"`
-}
-
-type fileErrorList []FileError
-
-func (l fileErrorList) Len() int {
-	return len(l)
-}
-
-func (l fileErrorList) Less(a, b int) bool {
-	return l[a].Path < l[b].Path
-}
-
-func (l fileErrorList) Swap(a, b int) {
-	l[a], l[b] = l[b], l[a]
 }
 
 func conflictName(name, lastModBy string) string {

@@ -14,11 +14,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/syncthing/syncthing/internal/itererr"
 	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/events"
@@ -325,11 +327,11 @@ func TestCopierCleanup(t *testing.T) {
 	// Update index (removing old blocks)
 	f.updateLocalsFromScanning([]protocol.FileInfo{file})
 
-	if vals, err := m.sdb.AllLocalBlocksWithHash(blocks[0].Hash); err != nil || len(vals) > 0 {
+	if vals, err := itererr.Collect(m.sdb.AllLocalBlocksWithHash(f.ID, blocks[0].Hash)); err != nil || len(vals) > 0 {
 		t.Error("Unexpected block found")
 	}
 
-	if vals, err := m.sdb.AllLocalBlocksWithHash(blocks[1].Hash); err != nil || len(vals) == 0 {
+	if vals, err := itererr.Collect(m.sdb.AllLocalBlocksWithHash(f.ID, blocks[1].Hash)); err != nil || len(vals) == 0 {
 		t.Error("Expected block not found")
 	}
 
@@ -338,11 +340,11 @@ func TestCopierCleanup(t *testing.T) {
 	// Update index (removing old blocks)
 	f.updateLocalsFromScanning([]protocol.FileInfo{file})
 
-	if vals, err := m.sdb.AllLocalBlocksWithHash(blocks[0].Hash); err != nil || len(vals) == 0 {
+	if vals, err := itererr.Collect(m.sdb.AllLocalBlocksWithHash(f.ID, blocks[0].Hash)); err != nil || len(vals) == 0 {
 		t.Error("Unexpected block found")
 	}
 
-	if vals, err := m.sdb.AllLocalBlocksWithHash(blocks[1].Hash); err != nil || len(vals) > 0 {
+	if vals, err := itererr.Collect(m.sdb.AllLocalBlocksWithHash(f.ID, blocks[1].Hash)); err != nil || len(vals) > 0 {
 		t.Error("Expected block not found")
 	}
 }
@@ -679,6 +681,17 @@ func TestCopyOwner(t *testing.T) {
 		expGroup = 5678
 	)
 
+	// This test hung on a regression, taking a long time to fail - speed that up.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	go func() {
+		<-ctx.Done()
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+			panic("timed out before test finished")
+		}
+	}()
+
 	// Set up a folder with the CopyParentOwner bit and backed by a fake
 	// filesystem.
 
@@ -1001,7 +1014,7 @@ func TestPullCaseOnlyPerformFinish(t *testing.T) {
 	default:
 	}
 
-	var caseErr *fs.ErrCaseConflict
+	var caseErr *fs.CaseConflictError
 	if !errors.As(err, &caseErr) {
 		t.Error("Expected case conflict error, got", err)
 	}

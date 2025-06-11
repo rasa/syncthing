@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/syncthing/syncthing/internal/db"
-	newdb "github.com/syncthing/syncthing/internal/db"
 	"github.com/syncthing/syncthing/internal/db/olddb"
 	"github.com/syncthing/syncthing/internal/db/olddb/backend"
 	"github.com/syncthing/syncthing/internal/db/sqlite"
@@ -61,11 +60,11 @@ func LoadOrGenerateCertificate(certFile, keyFile string) (tls.Certificate, error
 }
 
 func GenerateCertificate(certFile, keyFile string) (tls.Certificate, error) {
-	l.Infof("Generating ECDSA key and certificate for %s...", tlsDefaultCommonName)
-	return tlsutil.NewCertificate(certFile, keyFile, tlsDefaultCommonName, deviceCertLifetimeDays)
+	l.Infof("Generating key and certificate for %s...", tlsDefaultCommonName)
+	return tlsutil.NewCertificate(certFile, keyFile, tlsDefaultCommonName, deviceCertLifetimeDays, false)
 }
 
-func DefaultConfig(path string, myID protocol.DeviceID, evLogger events.Logger, noDefaultFolder, skipPortProbing bool) (config.Wrapper, error) {
+func DefaultConfig(path string, myID protocol.DeviceID, evLogger events.Logger, skipPortProbing bool) (config.Wrapper, error) {
 	newCfg := config.New(myID)
 
 	if skipPortProbing {
@@ -76,30 +75,18 @@ func DefaultConfig(path string, myID protocol.DeviceID, evLogger events.Logger, 
 		return nil, err
 	}
 
-	if noDefaultFolder {
-		l.Infoln("We will skip creation of a default folder on first start")
-		return config.Wrap(path, newCfg, myID, evLogger), nil
-	}
-
-	fcfg := newCfg.Defaults.Folder.Copy()
-	fcfg.ID = "default"
-	fcfg.Label = "Default Folder"
-	fcfg.FilesystemType = config.FilesystemTypeBasic
-	fcfg.Path = locations.Get(locations.DefFolder)
-	newCfg.Folders = append(newCfg.Folders, fcfg)
-	l.Infoln("Default folder created and/or linked to new config")
 	return config.Wrap(path, newCfg, myID, evLogger), nil
 }
 
 // LoadConfigAtStartup loads an existing config. If it doesn't yet exist, it
-// creates a default one, without the default folder if noDefaultFolder is true.
-// Otherwise it checks the version, and archives and upgrades the config if
-// necessary or returns an error, if the version isn't compatible.
-func LoadConfigAtStartup(path string, cert tls.Certificate, evLogger events.Logger, allowNewerConfig, noDefaultFolder, skipPortProbing bool) (config.Wrapper, error) {
+// creates a default one. Otherwise it checks the version, and archives and
+// upgrades the config if necessary or returns an error, if the version
+// isn't compatible.
+func LoadConfigAtStartup(path string, cert tls.Certificate, evLogger events.Logger, allowNewerConfig, skipPortProbing bool) (config.Wrapper, error) {
 	myID := protocol.NewDeviceID(cert.Certificate[0])
 	cfg, originalVersion, err := config.Load(path, myID, evLogger)
 	if fs.IsNotExist(err) {
-		cfg, err = DefaultConfig(path, myID, evLogger, noDefaultFolder, skipPortProbing)
+		cfg, err = DefaultConfig(path, myID, evLogger, skipPortProbing)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate default config: %w", err)
 		}
@@ -158,13 +145,13 @@ func copyFile(src, dst string) error {
 }
 
 // Opens a database
-func OpenDatabase(path string, deleteRetention time.Duration) (newdb.DB, error) {
+func OpenDatabase(path string, deleteRetention time.Duration) (db.DB, error) {
 	sql, err := sqlite.Open(path, sqlite.WithDeleteRetention(deleteRetention))
 	if err != nil {
 		return nil, err
 	}
 
-	sdb := newdb.MetricsWrap(sql)
+	sdb := db.MetricsWrap(sql)
 
 	return sdb, nil
 }
@@ -182,11 +169,13 @@ func TryMigrateDatabase(deleteRetention time.Duration) error {
 		// Apparently, not a valid old database
 		return nil
 	}
+	defer be.Close()
 
 	sdb, err := sqlite.OpenForMigration(locations.Get(locations.Database))
 	if err != nil {
 		return err
 	}
+	defer sdb.Close()
 
 	miscDB := db.NewMiscDB(sdb)
 	if when, ok, err := miscDB.Time("migrated-from-leveldb-at"); err == nil && ok {
@@ -277,8 +266,7 @@ func TryMigrateDatabase(deleteRetention time.Duration) error {
 	_ = miscDB.PutTime("migrated-from-leveldb-at", time.Now())
 	_ = miscDB.PutString("migrated-from-leveldb-by", build.LongVersion)
 
-	be.Close()
-	sdb.Close()
+	_ = be.Close()
 	_ = os.Rename(oldDBDir, oldDBDir+"-migrated")
 
 	l.Infof("Migration complete, %d files and %dk blocks in %s", totFiles, totBlocks/1000, time.Since(t0).Truncate(time.Second))

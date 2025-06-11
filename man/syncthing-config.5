@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "SYNCTHING-CONFIG" "5" "Apr 04, 2025" "v1.29.3" "Syncthing"
+.TH "SYNCTHING-CONFIG" "5" "Jun 01, 2025" "v1.29.6" "Syncthing"
 .SH NAME
 syncthing-config \- Syncthing Configuration
 .SH SYNOPSIS
@@ -221,7 +221,6 @@ may no longer correspond to the defaults.
         <sendFullIndexOnUpgrade>false</sendFullIndexOnUpgrade>
         <connectionLimitEnough>0</connectionLimitEnough>
         <connectionLimitMax>0</connectionLimitMax>
-        <insecureAllowOldTLSVersions>false</insecureAllowOldTLSVersions>
     </options>
     <remoteIgnoredDevice time=\(dq2022\-01\-09T20:02:01Z\(dq id=\(dq5SYI2FS\-LW6YAXI\-JJDYETS\-NDBBPIO\-256MWBO\-XDPXWVG\-24QPUM4\-PDW4UQU\(dq name=\(dqbugger\(dq address=\(dq192.168.0.20:22000\(dq></remoteIgnoredDevice>
     <defaults>
@@ -568,8 +567,8 @@ change this unless you know what you’re doing.
 .TP
 .B maxConflicts
 The maximum number of conflict copies to keep around for any given file.
-The default, \fB\-1\fP, means an unlimited number. Setting this to \fB0\fP disables
-conflict copies altogether.
+The default is \fB10\fP\&. \fB\-1\fP, means an unlimited number.
+Setting this to \fB0\fP disables conflict copies altogether.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1077,6 +1076,11 @@ header do not need this setting.
 When this setting is disabled, the GUI will not send 401 responses so users
 won’t see browser popups prompting for username and password.
 .UNINDENT
+.INDENT 0.0
+.TP
+.B metricsWithoutAuth
+If true, this allows access to the ‘/metrics’ without authentication.
+.UNINDENT
 .SH LDAP ELEMENT
 .INDENT 0.0
 .INDENT 3.5
@@ -1196,7 +1200,6 @@ Search filter for user searches.
     <sendFullIndexOnUpgrade>false</sendFullIndexOnUpgrade>
     <connectionLimitEnough>0</connectionLimitEnough>
     <connectionLimitMax>0</connectionLimitMax>
-    <insecureAllowOldTLSVersions>false</insecureAllowOldTLSVersions>
 </options>
 .EE
 .UNINDENT
@@ -1429,8 +1432,9 @@ ECN bits into account.
 .INDENT 0.0
 .TP
 .B stunServer
-Server to be used for STUN, given as ip:port. The keyword \fBdefault\fP gets
-expanded to a set of public STUN servers.
+Server to use for STUN, given as ip:port. The keyword \fBdefault\fP gets
+expanded to a set of public STUN servers, with preference given to those
+hosted by the Syncthing project.
 .sp
 To configure multiple servers, you can either: repeat \fB<stunServer>\fP tags
 in the configuration file or enter several servers separated by commas in
@@ -1535,9 +1539,20 @@ chapter\fP\&.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B insecureAllowOldTLSVersions
-Only for compatibility with old versions of Syncthing on remote devices, as
-detailed in \fI\%insecureAllowOldTLSVersions\fP\&.
+.B auditEnabled
+When \fBtrue\fP, analogous to \fI\%\-\-audit\fP being set.
+Defaults to \fBfalse\fP\&.
+.sp
+When either this option, or \fI\%\-\-audit\fP (or both) are enabled,
+auditing is enabled.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B auditFile
+Analogous to \fI\%\-\-auditfile\fP\&. Defaults to being unset.
+.sp
+For compatibility reasons, if both this option and \fI\%\-\-auditfile\fP
+are set, \fI\%\-\-auditfile\fP takes priority.
 .UNINDENT
 .SH DEFAULTS ELEMENT
 .INDENT 0.0

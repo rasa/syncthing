@@ -80,13 +80,15 @@ func (s *Service) periodic(ctx context.Context) error {
 	t0 := time.Now()
 	l.Debugln("Periodic start")
 
-	s.sdb.updateLock.Lock()
-	defer s.sdb.updateLock.Unlock()
-
 	t1 := time.Now()
 	defer func() { l.Debugln("Periodic done in", time.Since(t1), "+", t1.Sub(t0)) }()
 
-	tidy(ctx, s.sdb.sql)
+	s.sdb.updateLock.Lock()
+	err := tidy(ctx, s.sdb.sql)
+	s.sdb.updateLock.Unlock()
+	if err != nil {
+		return err
+	}
 
 	return wrap(s.sdb.forEachFolder(func(fdb *folderDB) error {
 		fdb.updateLock.Lock()
@@ -98,8 +100,7 @@ func (s *Service) periodic(ctx context.Context) error {
 		if err := garbageCollectBlocklistsAndBlocksLocked(ctx, fdb); err != nil {
 			return wrap(err)
 		}
-		tidy(ctx, fdb.sql)
-		return nil
+		return tidy(ctx, fdb.sql)
 	}))
 }
 

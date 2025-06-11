@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 
@@ -92,6 +92,8 @@ func TestDefaultValues(t *testing.T) {
 			RawStunServers:            []string{"default"},
 			AnnounceLANAddresses:      true,
 			FeatureFlags:              []string{},
+			AuditEnabled:              false,
+			AuditFile:                 "",
 			ConnectionPriorityTCPLAN:  10,
 			ConnectionPriorityQUICLAN: 20,
 			ConnectionPriorityTCPWAN:  30,
@@ -295,6 +297,8 @@ func TestOverriddenValues(t *testing.T) {
 		StunKeepaliveMinS:         900,
 		RawStunServers:            []string{"foo"},
 		FeatureFlags:              []string{"feature"},
+		AuditEnabled:              true,
+		AuditFile:                 "nggyu",
 		ConnectionPriorityTCPLAN:  40,
 		ConnectionPriorityQUICLAN: 45,
 		ConnectionPriorityTCPWAN:  50,
@@ -907,7 +911,7 @@ func TestV14ListenAddressesMigration(t *testing.T) {
 			t.Error("Configuration was not converted")
 		}
 
-		sort.Strings(tc[2])
+		slices.Sort(tc[2])
 		if !reflect.DeepEqual(cfg.Options.RawListenAddresses, tc[2]) {
 			t.Errorf("Migration error; actual %#v != expected %#v", cfg.Options.RawListenAddresses, tc[2])
 		}

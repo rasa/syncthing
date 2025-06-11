@@ -8,6 +8,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -23,9 +24,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime/pprof"
-	"sort"
+	"slices"
 	"strconv"
 	"syscall"
+	"text/tabwriter"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -37,6 +39,7 @@ import (
 	"github.com/syncthing/syncthing/cmd/syncthing/decrypt"
 	"github.com/syncthing/syncthing/cmd/syncthing/generate"
 	"github.com/syncthing/syncthing/internal/db"
+	"github.com/syncthing/syncthing/internal/db/sqlite"
 	_ "github.com/syncthing/syncthing/lib/automaxprocs"
 	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/config"
@@ -172,7 +175,6 @@ type serveCmd struct {
 	LogMaxFiles               int           `name:"log-max-old-files" help:"Number of old files to keep (zero to keep only current)" default:"${logMaxFiles}" placeholder:"N" env:"STLOGMAXOLDFILES"`
 	LogMaxSize                int           `help:"Maximum size of any file (zero to disable log rotation)" default:"${logMaxSize}" placeholder:"BYTES" env:"STLOGMAXSIZE"`
 	NoBrowser                 bool          `help:"Do not start browser" env:"STNOBROWSER"`
-	NoDefaultFolder           bool          `help:"Don't create the \"default\" folder on first startup" env:"STNODEFAULTFOLDER"`
 	NoPortProbing             bool          `help:"Don't try to find free ports for GUI and listen addresses on first startup" env:"STNOPORTPROBING"`
 	NoRestart                 bool          `help:"Do not restart Syncthing when exiting due to API/GUI command, upgrade, or crash" env:"STNORESTART"`
 	NoUpgrade                 bool          `help:"Disable automatic upgrades" env:"STNOUPGRADE"`
@@ -293,10 +295,12 @@ func (c *serveCmd) Run() error {
 		}
 	}
 
-	// Ensure that our home directory exists.
-	if err := syncthing.EnsureDir(locations.GetBaseDir(locations.ConfigBaseDir), 0o700); err != nil {
-		l.Warnln("Failure on home directory:", err)
-		os.Exit(svcutil.ExitError.AsInt())
+	// Ensure that our config and data directories exist.
+	for _, loc := range []locations.BaseDirEnum{locations.ConfigBaseDir, locations.DataBaseDir} {
+		if err := syncthing.EnsureDir(locations.GetBaseDir(loc), 0o700); err != nil {
+			l.Warnln("Failed to ensure directory exists:", err)
+			os.Exit(svcutil.ExitError.AsInt())
+		}
 	}
 
 	if c.InternalInnerProcess {
@@ -334,7 +338,7 @@ func debugFacilities() string {
 			maxLen = len(name)
 		}
 	}
-	sort.Strings(names)
+	slices.Sort(names)
 
 	// Format the choices
 	b := new(bytes.Buffer)
@@ -399,9 +403,11 @@ func upgradeViaRest() error {
 	if err != nil {
 		return err
 	}
+
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
 		bs, err := io.ReadAll(resp.Body)
-		defer resp.Body.Close()
 		if err != nil {
 			return err
 		}
@@ -463,12 +469,13 @@ func (c *serveCmd) syncthingMain() {
 	evLogger := events.NewLogger()
 	earlyService.Add(evLogger)
 
-	cfgWrapper, err := syncthing.LoadConfigAtStartup(locations.Get(locations.ConfigFile), cert, evLogger, c.AllowNewerConfig, c.NoDefaultFolder, c.NoPortProbing)
+	cfgWrapper, err := syncthing.LoadConfigAtStartup(locations.Get(locations.ConfigFile), cert, evLogger, c.AllowNewerConfig, c.NoPortProbing)
 	if err != nil {
 		l.Warnln("Failed to initialize config:", err)
 		os.Exit(svcutil.ExitError.AsInt())
 	}
 	earlyService.Add(cfgWrapper)
+	config.RegisterInfoMetrics(cfgWrapper)
 
 	// Candidate builds should auto upgrade. Make sure the option is set,
 	// unless we are in a build where it's disabled or the STNOUPGRADE
@@ -534,8 +541,19 @@ func (c *serveCmd) syncthingMain() {
 		Verbose:               c.Verbose,
 		DBMaintenanceInterval: c.DBMaintenanceInterval,
 	}
-	if c.Audit {
-		appOpts.AuditWriter = auditWriter(c.AuditFile)
+
+	if c.Audit || cfgWrapper.Options().AuditEnabled {
+		l.Infoln("Auditing is enabled.")
+
+		auditFile := cfgWrapper.Options().AuditFile
+
+		// Ignore config option if command-line option is set
+		if c.AuditFile != "" {
+			l.Debugln("Using the audit file from the command-line parameter.")
+			auditFile = c.AuditFile
+		}
+
+		appOpts.AuditWriter = auditWriter(auditFile)
 	}
 
 	app, err := syncthing.New(cfgWrapper, sdb, evLogger, cert, appOpts)
@@ -595,8 +613,7 @@ func setupSignalHandling(app *syncthing.App) {
 	// Exit cleanly with "restarting" code on SIGHUP.
 
 	restartSign := make(chan os.Signal, 1)
-	sigHup := syscall.Signal(1)
-	signal.Notify(restartSign, sigHup)
+	signal.Notify(restartSign, syscall.SIGHUP)
 	go func() {
 		<-restartSign
 		app.Stop(svcutil.ExitRestart)
@@ -815,24 +832,6 @@ func exitCodeForUpgrade(err error) int {
 	return svcutil.ExitError.AsInt()
 }
 
-// convertLegacyArgs returns the slice of arguments with single dash long
-// flags converted to double dash long flags.
-func convertLegacyArgs(args []string) []string {
-	// Legacy args begin with a single dash, followed by two or more characters.
-	legacyExp := regexp.MustCompile(`^-\w{2,}`)
-
-	res := make([]string, len(args))
-	for i, arg := range args {
-		if legacyExp.MatchString(arg) {
-			res[i] = "-" + arg
-		} else {
-			res[i] = arg
-		}
-	}
-
-	return res
-}
-
 type versionCmd struct{}
 
 func (versionCmd) Run() error {
@@ -890,7 +889,8 @@ func (u upgradeCmd) Run() error {
 	release, err := checkUpgrade()
 	if err == nil {
 		lf := flock.New(locations.Get(locations.LockFile))
-		locked, err := lf.TryLock()
+		var locked bool
+		locked, err = lf.TryLock()
 		if err != nil {
 			l.Warnln("Upgrade:", err)
 			os.Exit(1)
@@ -920,7 +920,8 @@ func (browserCmd) Run() error {
 }
 
 type debugCmd struct {
-	ResetDatabase resetDatabaseCmd `cmd:"" help:"Reset the database, forcing a full rescan and resync"`
+	ResetDatabase      resetDatabaseCmd `cmd:"" help:"Reset the database, forcing a full rescan and resync"`
+	DatabaseStatistics databaseStatsCmd `cmd:"" help:"Display database size statistics"`
 }
 
 type resetDatabaseCmd struct{}
@@ -933,6 +934,43 @@ func (resetDatabaseCmd) Run() error {
 	}
 	l.Infoln("Successfully reset database - it will be rebuilt after next start.")
 	return nil
+}
+
+type databaseStatsCmd struct{}
+
+func (c databaseStatsCmd) Run() error {
+	db, err := sqlite.Open(locations.Get(locations.Database))
+	if err != nil {
+		return err
+	}
+	ds, err := db.Statistics()
+	if err != nil {
+		return err
+	}
+
+	tw := tabwriter.NewWriter(os.Stdout, 2, 2, 2, ' ', 0)
+	hdr := fmt.Sprintf("%s\t%s\t%s\t%12s\t%7s\n", "DATABASE", "FOLDER ID", "TABLE", "SIZE", "FILL")
+	fmt.Fprint(tw, hdr)
+	fmt.Fprint(tw, regexp.MustCompile(`[A-Z]`).ReplaceAllString(hdr, "="))
+	c.printStat(tw, ds)
+	return tw.Flush()
+}
+
+func (c databaseStatsCmd) printStat(w io.Writer, s *sqlite.DatabaseStatistics) {
+	for _, table := range s.Tables {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%8d KiB\t%5.01f %%\n", s.Name, cmp.Or(s.FolderID, "-"), table.Name, table.Size/1024, float64(table.Size-table.Unused)*100/float64(table.Size))
+	}
+	for _, next := range s.Children {
+		c.printStat(w, &next)
+		s.Total.Size += next.Total.Size
+		s.Total.Unused += next.Total.Unused
+	}
+
+	totalName := s.Name
+	if len(s.Children) > 0 {
+		totalName += " + children"
+	}
+	fmt.Fprintf(w, "%s\t%s\t%s\t%8d KiB\t%5.01f %%\n", totalName, cmp.Or(s.FolderID, "-"), "(total)", s.Total.Size/1024, float64(s.Total.Size-s.Total.Unused)*100/float64(s.Total.Size))
 }
 
 func setConfigDataLocationsFromFlags(homeDir, confDir, dataDir string) error {

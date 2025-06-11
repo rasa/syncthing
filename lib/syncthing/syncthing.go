@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -251,13 +251,7 @@ func (a *App) startup() error {
 	// The TLS configuration is used for both the listening socket and outgoing
 	// connections.
 
-	var tlsCfg *tls.Config
-	if a.cfg.Options().InsecureAllowOldTLSVersions {
-		l.Infoln("TLS 1.2 is allowed on sync connections. This is less than optimally secure.")
-		tlsCfg = tlsutil.SecureDefaultWithTLS12()
-	} else {
-		tlsCfg = tlsutil.SecureDefaultTLS13()
-	}
+	tlsCfg := tlsutil.SecureDefaultTLS13()
 	tlsCfg.Certificates = []tls.Certificate{a.cert}
 	tlsCfg.NextProtos = []string{bepProtocolName}
 	tlsCfg.ClientAuth = tls.RequestClientCert
@@ -442,8 +436,8 @@ func printServiceTree(w io.Writer, sup supervisor, level int) {
 	printService(w, sup, level)
 
 	svcs := sup.Services()
-	sort.Slice(svcs, func(a, b int) bool {
-		return fmt.Sprint(svcs[a]) < fmt.Sprint(svcs[b])
+	slices.SortFunc(svcs, func(a, b suture.Service) int {
+		return strings.Compare(fmt.Sprint(a), fmt.Sprint(b))
 	})
 
 	for _, svc := range svcs {

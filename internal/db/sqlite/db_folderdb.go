@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/syncthing/syncthing/internal/db"
-	"github.com/syncthing/syncthing/internal/itererr"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/protocol"
 	"github.com/syncthing/syncthing/lib/rand"
@@ -35,12 +34,17 @@ func (s *DB) getFolderDB(folder string, create bool) (*folderDB, error) {
 
 	// Check for an existing database. If we're not supposed to create the
 	// folder, we don't move on if it doesn't already have a database name.
-	var dbName string
+	var dbns sql.NullString
 	if err := s.stmt(`
 		SELECT database_name FROM folders
 		WHERE folder_id = ?
-	`).Get(&dbName, folder); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	`).Get(&dbns, folder); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, wrap(err)
+	}
+
+	var dbName string
+	if dbns.Valid {
+		dbName = dbns.String
 	}
 	if dbName == "" && !create {
 		return nil, errNoSuchFolder
@@ -56,6 +60,10 @@ func (s *DB) getFolderDB(folder string, create bool) (*folderDB, error) {
 	if dbName == "" {
 		// First time we want to access this folder, need to create a new
 		// folder ID
+
+		s.updateLock.Lock()
+		defer s.updateLock.Unlock()
+
 		idx, err := s.folderIdxLocked(folder)
 		if err != nil {
 			return nil, wrap(err)
@@ -145,24 +153,15 @@ func (s *DB) AllGlobalFilesPrefix(folder string, prefix string) (iter.Seq[db.Fil
 	return fdb.AllGlobalFilesPrefix(prefix)
 }
 
-func (s *DB) AllLocalBlocksWithHash(hash []byte) ([]db.BlockMapEntry, error) {
-	var entries []db.BlockMapEntry
-	err := s.forEachFolder(func(fdb *folderDB) error {
-		es, err := itererr.Collect(fdb.AllLocalBlocksWithHash(hash))
-		entries = append(entries, es...)
-		return err
-	})
-	return entries, err
-}
-
-func (s *DB) AllLocalFilesWithBlocksHashAnyFolder(hash []byte) (map[string][]db.FileMetadata, error) {
-	res := make(map[string][]db.FileMetadata)
-	err := s.forEachFolder(func(fdb *folderDB) error {
-		files, err := itererr.Collect(fdb.AllLocalFilesWithBlocksHash(hash))
-		res[fdb.folderID] = files
-		return err
-	})
-	return res, err
+func (s *DB) AllLocalBlocksWithHash(folder string, hash []byte) (iter.Seq[db.BlockMapEntry], func() error) {
+	fdb, err := s.getFolderDB(folder, false)
+	if errors.Is(err, errNoSuchFolder) {
+		return func(yield func(db.BlockMapEntry) bool) {}, func() error { return nil }
+	}
+	if err != nil {
+		return func(yield func(db.BlockMapEntry) bool) {}, func() error { return err }
+	}
+	return fdb.AllLocalBlocksWithHash(hash)
 }
 
 func (s *DB) AllLocalFiles(folder string, device protocol.DeviceID) (iter.Seq[protocol.FileInfo], func() error) {
@@ -256,7 +255,7 @@ func (s *DB) ListDevicesForFolder(folder string) ([]protocol.DeviceID, error) {
 func (s *DB) RemoteSequences(folder string) (map[protocol.DeviceID]int64, error) {
 	fdb, err := s.getFolderDB(folder, false)
 	if errors.Is(err, errNoSuchFolder) {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	if err != nil {
 		return nil, err

@@ -1,5 +1,8 @@
 #!/usr/bin/make
 
+FORCE ?= --force
+# SILENT ?= --silent
+
 SHELL := bash
 
 PHONY+=default
@@ -75,7 +78,7 @@ PHONY+=install_node
 install_node: install_nvm ## Install node using the NODE_VER variable
 	test -n "$(NODE_VER)"
 	. $(NVM_DIR)/nvm.sh && \
-			nvm install --default $(NODE_VER)
+			nvm install --default $(NODE_VER) --latest-npm
 	. $(NVM_DIR)/nvm.sh && \
 		nvm alias default $(NODE_VER)
 
@@ -127,7 +130,8 @@ define build
 	@:
 	@: # Fix ES6 error: npm ERR! cb() never called!
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g npm@$(NPM_VER) --silent
+		npm install -g npm $(SILENT)
+	# npm install -g npm@$(NPM_VER) $(SILENT)
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm install \
@@ -137,13 +141,13 @@ define build
 			karma@$(KARMA_VER) \
 	 		request@$(REQUEST_VER) \
 	 		tough-cookie@$(TOUCH_COOKIE_VER) \
-			--silent
+			$(SILENT) $(FORCE)
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm cache clean
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install --silent
+		npm install $(SILENT)
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		npm dedup
@@ -156,11 +160,11 @@ define build
 	@:
 	@: # without the version number, 1.8.3 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install -g bower@$(BOWER_VER) --silent
+		npm install -g bower@$(BOWER_VER) $(SILENT)
 	@:
 	@: # without the version number, 1.5.0 would be installed
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
-		npm install grunt-cli@$(GRUNT_CLI_VER) --silent
+		npm install grunt-cli@$(GRUNT_CLI_VER) $(SILENT)
 	@:
 	cd $@ && . $(NVM_DIR)/nvm.sh && \
 		PATH="./node_modules/.bin/:$${PATH}" \

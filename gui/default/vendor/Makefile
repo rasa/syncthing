@@ -1,6 +1,7 @@
 #!/usr/bin/make
 
-FORCE ?= --force
+# LATEST_NPM ?= --latest-npm
+# FORCE ?= --force
 # SILENT ?= --silent
 
 SHELL := bash
@@ -78,7 +79,7 @@ PHONY+=install_node
 install_node: install_nvm ## Install node using the NODE_VER variable
 	test -n "$(NODE_VER)"
 	. $(NVM_DIR)/nvm.sh && \
-			nvm install --default $(NODE_VER) --latest-npm
+			nvm install --default $(NODE_VER) $(LATEST_NPM)
 	. $(NVM_DIR)/nvm.sh && \
 		nvm alias default $(NODE_VER)
 

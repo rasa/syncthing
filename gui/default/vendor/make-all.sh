@@ -24,11 +24,11 @@ make uninstall_all
 
 make nuke
 
-git restore "${paths[@]}"
+git restore -q "${paths[@]}"
 
 set -a
 
-ANGULAR_VER=1.8.3
+ANGULAR_VER=1.3.20
 
 . "v${ANGULAR_VER}.sh"
 
@@ -37,7 +37,7 @@ test -z "${SAVE_STASHES:-}" || \
 
 clear
 
-make angular  2>&1 | tee "${ANGULAR_VER}.log"
+make "$@" 2>&1 | tee "${ANGULAR_VER}.log"
 
 test -z "${SAVE_STASHES:-}" || \
     git stash list

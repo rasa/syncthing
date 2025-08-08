@@ -279,7 +279,7 @@ func TestCopyRange(tttt *testing.T) {
 							}
 							defer os.RemoveAll(td)
 
-							fs := NewFilesystem(FilesystemTypeBasic, td)
+							fs := NewFilesystem(FilesystemTypeBasic, td, testOpts()...)
 
 							if _, err := io.ReadFull(randSrc, srcBuf); err != nil {
 								t.Fatal(err)

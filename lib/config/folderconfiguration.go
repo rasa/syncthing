@@ -87,6 +87,7 @@ type FolderConfiguration struct {
 	SyncXattrs              bool                        `json:"syncXattrs" xml:"syncXattrs"`
 	SendXattrs              bool                        `json:"sendXattrs" xml:"sendXattrs"`
 	XattrFilter             XattrFilter                 `json:"xattrFilter" xml:"xattrFilter"`
+	EncoderType             EncoderType                 `json:"encoderType" xml:"encoderType" default:"unset"`
 	// Legacy deprecated
 	DeprecatedReadOnly       bool    `json:"-" xml:"ro,attr,omitempty"`        // Deprecated: Do not use.
 	DeprecatedMinDiskFreePct float64 `json:"-" xml:"minDiskFreePct,omitempty"` // Deprecated: Do not use.
@@ -131,6 +132,13 @@ func (f FolderConfiguration) Filesystem(extraOpts ...fs.Option) fs.Filesystem {
 	}
 	if !f.CaseSensitiveFS {
 		opts = append(opts, new(fs.OptionDetectCaseConflicts))
+	}
+	// We never instantiate "None" encoders, except in the test suite.
+	switch f.EncoderType {
+	case EncoderTypeUnset, EncoderTypeNone:
+		// noop
+	default:
+		opts = append(opts, fs.EncoderTypeOption(f.EncoderType.ToEncoderType()))
 	}
 	opts = append(opts, extraOpts...)
 	return fs.NewFilesystem(f.FilesystemType.ToFS(), f.Path, opts...)

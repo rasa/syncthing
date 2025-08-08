@@ -661,6 +661,12 @@ func (defaults *Defaults) prepare(myID protocol.DeviceID, existingDevices map[pr
 	ensureZeroForNodefault(&DeviceConfiguration{}, &defaults.Device)
 	defaults.Folder.prepare(myID, existingDevices)
 	defaults.Device.prepare(nil)
+	// Default to FAT on Windows and Android per @calmh's comment at
+	// https://github.com/syncthing/syncthing/issues/9539#issuecomment-2141394377
+	// Only set the default encoder type if it hasn't already been set.
+	if defaults.Folder.EncoderType == EncoderTypeUnset {
+		defaults.Folder.EncoderType = encoderType(fs.DefaultEncoderType())
+	}
 }
 
 func ensureZeroForNodefault(empty interface{}, target interface{}) {
@@ -706,4 +712,15 @@ func (i Ignores) Copy() Ignores {
 	out := Ignores{Lines: make([]string, len(i.Lines))}
 	copy(out.Lines, i.Lines)
 	return out
+}
+
+func encoderType(et fs.EncoderType) EncoderType {
+	switch et {
+	case fs.EncoderTypeNone:
+		return EncoderTypeNone
+	case fs.EncoderTypeFat:
+		return EncoderTypeFat
+	default:
+		panic(fmt.Sprintf("Unknown encoder type %d", fs.DefaultEncoderType()))
+	}
 }

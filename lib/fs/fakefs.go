@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net/url"
 	"os"
@@ -23,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/syncthing/syncthing/lib/encoding/fat"
+	"github.com/syncthing/syncthing/lib/fsutil"
 	"github.com/syncthing/syncthing/lib/protocol"
 )
 
@@ -63,9 +66,12 @@ const randomBlockShift = 14 // 128k
 //     content=true to save actual file contents instead of generating pseudorandomly; n.b. memory usage
 //     nostfolder=true skip the creation of .stfolder
 //     timeprecisionsecond=true Modification times are stored with only second precision
+//     volume=s   "fat" makes filesystem fail on FAT reserved filenames
+//     encoder=s  "fat" makes filesystem fail on encoded filenames
 //
 // - Two fakeFS:s pointing at the same root path see the same files.
 type fakeFS struct {
+	Rooter
 	counters            fakeFSCounters
 	uri                 string
 	mut                 sync.Mutex
@@ -76,6 +82,9 @@ type fakeFS struct {
 	latency             time.Duration
 	userCache           *userCache
 	groupCache          *groupCache
+	volumeType          fsutil.VolumeType
+	encoderType         EncoderType
+	pattern             bool
 }
 
 type fakeFSCounters struct {
@@ -126,6 +135,7 @@ func newFakeFilesystem(rootURI string, _ ...Option) *fakeFS {
 		},
 		userCache:  newValueCache(time.Hour, user.LookupId),
 		groupCache: newValueCache(time.Hour, user.LookupGroupId),
+		volumeType: fsutil.VolumeTypeExt,
 	}
 
 	files, _ := strconv.Atoi(params.Get("files"))
@@ -137,6 +147,14 @@ func newFakeFilesystem(rootURI string, _ ...Option) *fakeFS {
 	fs.withContent = params.Get("content") == "true"
 	nostfolder := params.Get("nostfolder") == "true"
 	fs.timePrecisionSecond = params.Get("timeprecisionsecond") == "true"
+	volume := strings.ToLower(params.Get("volume"))
+	if volume != "" {
+		_ = fs.volumeType.UnmarshalText([]byte(volume))
+	}
+	encoder := strings.ToLower(params.Get("encoder"))
+	if encoder != "" {
+		_ = fs.encoderType.UnmarshalText([]byte(encoder))
+	}
 
 	if sizeavg == 0 {
 		sizeavg = 1 << 20
@@ -175,7 +193,6 @@ func newFakeFilesystem(rootURI string, _ ...Option) *fakeFS {
 	// We only set the latency after doing the operations required to create
 	// the filesystem initially.
 	fs.latency, _ = time.ParseDuration(params.Get("latency"))
-
 	fakeFSCache[rootURI] = fs
 	return fs
 }
@@ -203,6 +220,7 @@ type fakeEntry struct {
 }
 
 func (fs *fakeFS) entryForName(name string) *fakeEntry {
+	name, _ = fs.rooted(name)
 	if fs.insens {
 		name = UnicodeLowercaseNormalized(name)
 	}
@@ -301,11 +319,17 @@ func (fs *fakeFS) create(name string) (*fakeEntry, error) {
 	}
 
 	dir := filepath.Dir(name)
-	base := filepath.Base(name)
 	entry := fs.entryForName(dir)
 	if entry == nil {
 		return nil, os.ErrNotExist
 	}
+
+	name, err := fs.rooted(name)
+	if err != nil {
+		return nil, err
+	}
+
+	base := filepath.Base(name)
 	new := &fakeEntry{
 		name:  base,
 		mode:  0o666,
@@ -329,14 +353,16 @@ func (fs *fakeFS) Create(name string) (File, error) {
 	if err != nil {
 		return nil, err
 	}
-	if fs.insens {
-		return &fakeFile{fakeEntry: entry, presentedName: filepath.Base(name), mut: &fs.mut}, nil
-	}
-	return &fakeFile{fakeEntry: entry, mut: &fs.mut}, nil
+	presentedName := filepath.Base(name)
+	return &fakeFile{fakeEntry: entry, presentedName: presentedName, fs: fs}, nil
 }
 
 func (fs *fakeFS) CreateSymlink(target, name string) error {
 	entry, err := fs.create(name)
+	if err != nil {
+		return err
+	}
+	target, err = fs.rooted(target)
 	if err != nil {
 		return err
 	}
@@ -358,7 +384,8 @@ func (fs *fakeFS) DirNames(name string) ([]string, error) {
 
 	names := make([]string, 0, len(entry.children))
 	for _, child := range entry.children {
-		names = append(names, child.name)
+		name := fs.unrooted(child.name)
+		names = append(names, name)
 	}
 
 	return names, nil
@@ -375,13 +402,13 @@ func (fs *fakeFS) Lstat(name string) (FileInfo, error) {
 		return nil, os.ErrNotExist
 	}
 
-	info := &fakeFileInfo{*entry}
+	info := &fakeFileInfo{*entry, filepath.Base(name)}
 	info.content = nil
 	info.children = nil
-	if fs.insens {
-		info.name = filepath.Base(name)
-	}
-
+	// unneeded:
+	// if fs.insens {
+	// 	info.name = filepath.Base(name)
+	// }
 	return info, nil
 }
 
@@ -392,16 +419,19 @@ func (fs *fakeFS) Mkdir(name string, perm FileMode) error {
 	time.Sleep(fs.latency)
 
 	dir := filepath.Dir(name)
-	base := filepath.Base(name)
 	entry := fs.entryForName(dir)
-	key := base
-
 	if entry == nil {
 		return os.ErrNotExist
 	}
 	if entry.entryType != fakeEntryTypeDir {
 		return os.ErrExist
 	}
+	name, err := fs.rooted(name)
+	if err != nil {
+		return err
+	}
+	base := filepath.Base(name)
+	key := base
 	if fs.insens {
 		key = UnicodeLowercaseNormalized(key)
 	}
@@ -424,6 +454,11 @@ func (fs *fakeFS) MkdirAll(name string, perm FileMode) error {
 	defer fs.mut.Unlock()
 	fs.counters.MkdirAll++
 	time.Sleep(fs.latency)
+
+	name, err := fs.rooted(name)
+	if err != nil {
+		return err
+	}
 
 	name = filepath.ToSlash(name)
 	name = strings.Trim(name, "/")
@@ -467,10 +502,8 @@ func (fs *fakeFS) Open(name string) (File, error) {
 		return nil, os.ErrNotExist
 	}
 
-	if fs.insens {
-		return &fakeFile{fakeEntry: entry, presentedName: filepath.Base(name), mut: &fs.mut}, nil
-	}
-	return &fakeFile{fakeEntry: entry, mut: &fs.mut}, nil
+	presentedName := filepath.Base(name)
+	return &fakeFile{fakeEntry: entry, presentedName: presentedName, fs: fs}, nil
 }
 
 func (fs *fakeFS) OpenFile(name string, flags int, mode FileMode) (File, error) {
@@ -484,15 +517,20 @@ func (fs *fakeFS) OpenFile(name string, flags int, mode FileMode) (File, error) 
 	time.Sleep(fs.latency)
 
 	dir := filepath.Dir(name)
-	base := filepath.Base(name)
 	entry := fs.entryForName(dir)
-	key := base
-
 	if entry == nil {
 		return nil, os.ErrNotExist
-	} else if entry.entryType != fakeEntryTypeDir {
+	}
+	if entry.entryType != fakeEntryTypeDir {
 		return nil, errors.New("not a directory")
 	}
+
+	rootedName, err := fs.rooted(name)
+	if err != nil {
+		return nil, os.ErrNotExist
+	}
+	base := filepath.Base(rootedName)
+	key := base
 
 	if fs.insens {
 		key = UnicodeLowercaseNormalized(key)
@@ -513,7 +551,9 @@ func (fs *fakeFS) OpenFile(name string, flags int, mode FileMode) (File, error) 
 	}
 
 	entry.children[key] = newEntry
-	return &fakeFile{fakeEntry: newEntry, mut: &fs.mut}, nil
+
+	presentedName := filepath.Base(name)
+	return &fakeFile{fakeEntry: newEntry, presentedName: presentedName, fs: fs}, nil
 }
 
 func (fs *fakeFS) ReadSymlink(name string) (string, error) {
@@ -525,10 +565,11 @@ func (fs *fakeFS) ReadSymlink(name string) (string, error) {
 	entry := fs.entryForName(name)
 	if entry == nil {
 		return "", os.ErrNotExist
-	} else if entry.entryType != fakeEntryTypeSymlink {
+	}
+	if entry.entryType != fakeEntryTypeSymlink {
 		return "", errors.New("not a symlink")
 	}
-	return entry.dest, nil
+	return fs.unrooted(entry.dest), nil
 }
 
 func (fs *fakeFS) Remove(name string) error {
@@ -550,6 +591,10 @@ func (fs *fakeFS) Remove(name string) error {
 	}
 
 	entry = fs.entryForName(filepath.Dir(name))
+	name, err := fs.rooted(name)
+	if err != nil {
+		return os.ErrNotExist
+	}
 	delete(entry.children, filepath.Base(name))
 	return nil
 }
@@ -571,6 +616,10 @@ func (fs *fakeFS) RemoveAll(name string) error {
 
 	// RemoveAll is easy when the file system uses garbage collection under
 	// the hood... We even get the correct semantics for open fd:s for free.
+	name, err := fs.rooted(name)
+	if err != nil {
+		return os.ErrNotExist
+	}
 	delete(entry.children, filepath.Base(name))
 	return nil
 }
@@ -581,26 +630,35 @@ func (fs *fakeFS) Rename(oldname, newname string) error {
 	fs.counters.Rename++
 	time.Sleep(fs.latency)
 
-	oldKey := filepath.Base(oldname)
-	newKey := filepath.Base(newname)
+	p0 := fs.entryForName(filepath.Dir(oldname))
+	if p0 == nil {
+		return os.ErrNotExist
+	}
+
+	p1 := fs.entryForName(filepath.Dir(newname))
+	if p1 == nil {
+		return os.ErrNotExist
+	}
+
+	rootedOldname, err := fs.rooted(oldname)
+	if err != nil {
+		return err
+	}
+	rootedNewname, err := fs.rooted(newname)
+	if err != nil {
+		return err
+	}
+
+	oldKey := filepath.Base(rootedOldname)
+	newKey := filepath.Base(rootedNewname)
 
 	if fs.insens {
 		oldKey = UnicodeLowercaseNormalized(oldKey)
 		newKey = UnicodeLowercaseNormalized(newKey)
 	}
 
-	p0 := fs.entryForName(filepath.Dir(oldname))
-	if p0 == nil {
-		return os.ErrNotExist
-	}
-
 	entry := p0.children[oldKey]
 	if entry == nil {
-		return os.ErrNotExist
-	}
-
-	p1 := fs.entryForName(filepath.Dir(newname))
-	if p1 == nil {
 		return os.ErrNotExist
 	}
 
@@ -657,20 +715,25 @@ func (*fakeFS) SetXattr(_ string, _ []protocol.Xattr, _ XattrFilter) error {
 	return nil
 }
 
-// A basic glob-impelementation that should be able to handle
-// simple test cases.
+// A basic glob-implementation that should be able to handle simple test cases.
+// NOTE: This implementation doesn't support hierarchical patterns such as
+// /usr/*/bin/ed.
 func (fs *fakeFS) Glob(pattern string) ([]string, error) {
 	dir := filepath.Dir(pattern)
-	file := filepath.Base(pattern)
+	fs.pattern = true
 	if _, err := fs.Lstat(dir); err != nil {
+		fs.pattern = false
 		return nil, errPathInvalid
 	}
 
 	var matches []string
 	names, err := fs.DirNames(dir)
+	fs.pattern = false
 	if err != nil {
 		return nil, err
 	}
+
+	file := filepath.Base(pattern)
 
 	for _, n := range names {
 		matched, err := filepath.Match(file, n)
@@ -749,7 +812,7 @@ func (fs *fakeFS) reportMetricsPer(b *testing.B, divisor float64, unit string) {
 // opened for reading or writing, it's all good.
 type fakeFile struct {
 	*fakeEntry
-	mut           *sync.Mutex
+	fs            *fakeFS
 	rng           io.Reader
 	seed          int64
 	offset        int64
@@ -762,14 +825,14 @@ func (*fakeFile) Close() error {
 }
 
 func (f *fakeFile) Read(p []byte) (int, error) {
-	f.mut.Lock()
-	defer f.mut.Unlock()
+	f.fs.mut.Lock()
+	defer f.fs.mut.Unlock()
 	return f.readShortAt(p, f.offset)
 }
 
 func (f *fakeFile) ReadAt(p []byte, offs int64) (int, error) {
-	f.mut.Lock()
-	defer f.mut.Unlock()
+	f.fs.mut.Lock()
+	defer f.fs.mut.Unlock()
 
 	// ReadAt is spec:ed to always read a full block unless EOF or failure,
 	// so we must loop. It's also not supposed to affect the seek position,
@@ -874,8 +937,8 @@ func (f *fakeFile) readShortAt(p []byte, offs int64) (int, error) {
 }
 
 func (f *fakeFile) Seek(offset int64, whence int) (int64, error) {
-	f.mut.Lock()
-	defer f.mut.Unlock()
+	f.fs.mut.Lock()
+	defer f.fs.mut.Unlock()
 
 	if f.entryType == fakeEntryTypeDir {
 		return 0, errors.New("is a directory")
@@ -903,15 +966,15 @@ func (f *fakeFile) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (f *fakeFile) Write(p []byte) (int, error) {
-	f.mut.Lock()
+	f.fs.mut.Lock()
 	offs := f.offset
-	f.mut.Unlock()
+	f.fs.mut.Unlock()
 	return f.WriteAt(p, offs)
 }
 
 func (f *fakeFile) WriteAt(p []byte, off int64) (int, error) {
-	f.mut.Lock()
-	defer f.mut.Unlock()
+	f.fs.mut.Lock()
+	defer f.fs.mut.Unlock()
 
 	if f.entryType == fakeEntryTypeDir {
 		return 0, errors.New("is a directory")
@@ -938,14 +1001,14 @@ func (f *fakeFile) Name() string {
 	if f.presentedName != "" {
 		return f.presentedName
 	}
-	f.mut.Lock()
-	defer f.mut.Unlock()
+	f.fs.mut.Lock()
+	defer f.fs.mut.Unlock()
 	return f.name
 }
 
 func (f *fakeFile) Truncate(size int64) error {
-	f.mut.Lock()
-	defer f.mut.Unlock()
+	f.fs.mut.Lock()
+	defer f.fs.mut.Unlock()
 
 	if f.content != nil {
 		if int64(cap(f.content)) < size {
@@ -965,9 +1028,9 @@ func (f *fakeFile) Truncate(size int64) error {
 }
 
 func (f *fakeFile) Stat() (FileInfo, error) {
-	f.mut.Lock()
-	info := &fakeFileInfo{*f.fakeEntry}
-	f.mut.Unlock()
+	f.fs.mut.Lock()
+	info := &fakeFileInfo{*f.fakeEntry, f.presentedName}
+	f.fs.mut.Unlock()
 	if f.presentedName != "" {
 		info.name = f.presentedName
 	}
@@ -981,10 +1044,14 @@ func (*fakeFile) Sync() error {
 
 // fakeFileInfo is the stat result.
 type fakeFileInfo struct {
-	fakeEntry // intentionally a copy of the struct
+	fakeEntry     // intentionally a copy of the struct
+	presentedName string
 }
 
 func (f *fakeFileInfo) Name() string {
+	if f.presentedName != "" {
+		return f.presentedName
+	}
 	return f.name
 }
 
@@ -1026,4 +1093,90 @@ func (*fakeFileInfo) Sys() interface{} {
 
 func (*fakeFileInfo) InodeChangeTime() time.Time {
 	return time.Time{}
+}
+
+func (fs *fakeFS) rooted(rel string) (string, error) {
+	if !fs.isValid(rel) {
+		return "", os.ErrNotExist
+	}
+	if fs.encoderType == EncoderTypeFat {
+		if fs.pattern {
+			return fat.EncodePattern(rel)
+		} else {
+			return fat.Encode(rel)
+		}
+	}
+	return rel, nil
+}
+
+func (fs *fakeFS) unrooted(path string) string {
+	if fs.encoderType == EncoderTypeFat {
+		return fat.MustDecode(path)
+	}
+	return path
+}
+
+func (*fakeFS) SetRooter(rooter Rooter) {
+	// To satisfy the Rooter interface.
+}
+
+// isValid checks name for validity. If name contains reserved characters, and
+// the FAT filesystem is enabled (uri has `volume=fat`), then isValid returns
+// false. If the FAT encoder is enabled (`encoder=fat`), and the filename
+// contains encoded characters, isValid returns false, as the real FAT encoder
+// reject filenames with encoded characters. Otherwise, isValid returns true.
+func (fs *fakeFS) isValid(name string) bool {
+	// Sanity checks in case we add new volume types or encoders:
+	switch fs.volumeType {
+	case fsutil.VolumeTypeUnknown:
+	case fsutil.VolumeTypeExt:
+	case fsutil.VolumeTypeFat:
+	default:
+		slog.Warn("Unexpected volumeType, please update fakefs.go's isValid()",
+			slog.Any("volumeType", fs.volumeType))
+		return false
+	}
+
+	switch fs.encoderType {
+	case EncoderTypeUnset:
+	case EncoderTypeNone:
+	case EncoderTypeFat:
+	default:
+		slog.Warn("Unexpected encoderType, please update fakefs.go's isValid()",
+			slog.Any("encoderType", fs.encoderType))
+		return false
+	}
+
+	//             Decoded   Encoded
+	// Vol Encoder Filenames Filenames
+	// --- ------- --------- ---------
+	// Ext None    ok        ok
+	// Ext FAT     ok        fail
+	// Fat None    fail      ok
+	// Fat FAT     ok        fail
+
+	// The FAT encoder rejects filenames containing encoded characters, even on
+	// Ext/ext-like volumes.
+	if fs.encoderType == EncoderTypeFat && fat.IsEncoded(name) {
+		return false
+	}
+
+	// Ext/ext-like volumes accepts filenames, regardless of encoder used.
+	if fs.volumeType != fsutil.VolumeTypeFat {
+		return true
+	}
+
+	// FAT filesystems accept filenames without reserved characters.
+	if !fat.IsDecoded(name) {
+		return true
+	}
+
+	// The FAT encoder accepts filenames with reserved characters.
+	if fs.encoderType == EncoderTypeFat {
+		return true
+	}
+
+	// Without a FAT encoder, FAT filesystems reject filenames with reserved
+	// characters.
+	return false
 }

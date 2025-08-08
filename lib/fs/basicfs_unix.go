@@ -21,7 +21,7 @@ func (*BasicFilesystem) SymlinksSupported() bool {
 }
 
 func (f *BasicFilesystem) CreateSymlink(target, name string) error {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func (f *BasicFilesystem) CreateSymlink(target, name string) error {
 }
 
 func (f *BasicFilesystem) ReadSymlink(name string) (string, error) {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return "", err
 	}
@@ -43,14 +43,14 @@ func (*BasicFilesystem) mkdirAll(path string, perm os.FileMode) error {
 // Unhide is a noop on unix, as unhiding files requires renaming them.
 // We still check that the relative path does not try to escape the root
 func (f *BasicFilesystem) Unhide(name string) error {
-	_, err := f.rooted(name)
+	_, err := f.Rooter.rooted(name)
 	return err
 }
 
 // Hide is a noop on unix, as hiding files requires renaming them.
 // We still check that the relative path does not try to escape the root
 func (f *BasicFilesystem) Hide(name string) error {
-	_, err := f.rooted(name)
+	_, err := f.Rooter.rooted(name)
 	return err
 }
 
@@ -59,7 +59,7 @@ func (*BasicFilesystem) Roots() ([]string, error) {
 }
 
 func (f *BasicFilesystem) Lchown(name, uid, gid string) error {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (f *BasicFilesystem) Lchown(name, uid, gid string) error {
 }
 
 func (f *BasicFilesystem) Remove(name string) error {
-	name, err := f.rooted(name)
+	name, err := f.Rooter.rooted(name)
 	if err != nil {
 		return err
 	}

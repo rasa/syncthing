@@ -406,6 +406,24 @@
               <input name="xattrMaxTotalSize" id="xattrMaxTotalSize" class="form-control" type="number" ng-model="currentFolder.xattrFilter.maxTotalSize" required="" aria-required="true" min="0" />
             </div>
           </div>
+
+
+          <div class="row">
+            <div class="col-md-6 form-group" ng-class="{'has-error': folderEditor.folderPath.$invalid && folderEditor.folderPath.$dirty && !editingFolderDefaults()}">
+              <label for="encoderType" translate>Filename Encoder</label>
+              &nbsp;<a href="{{docsURL('users/encoders')}}" target="_blank"><span class="fas fa-question-circle"></span>&nbsp;<span translate>Help</span></a>
+              <select class="form-control" ng-model="currentFolder.encoderType" ng-disabled="editingFolderExisting()">
+                <option value="none" ng-disabled="editingFolderExisting()" translate>None</option>
+                <option value="rclone" ng-disabled="editingFolderExisting()" translate>Rclone</option>
+                <option value="wsl" ng-disabled="editingFolderExisting()" translate>WSL</option>
+              </select>
+              <p ng-if="currentFolder.encoderType == 'none'" translate class="help-block">Filenames are not encoded. Best for APFS, Btrfs, ext3/4, HFS+, XFS, ZFS, etc. filesystems (typically found on Linux, macOS, and other unix-like systems).</p>
+              <p ng-if="currentFolder.encoderType == 'rclone'" translate class="help-block">Filenames containing *?:&lt;&gt;|&quot; are encoded using Unicode full-width characters (Windows Explorer compatible). Best for exFAT, FAT32, NTFS, ReFS, and vfat filesystems (typically found on Windows and Android).</p>
+              <p ng-if="currentFolder.encoderType == 'wsl'" translate class="help-block">Filenames containing *?:&lt;&gt;|&quot; are encoded using Unicode Private Use characters (Cygwin/GitBash/Msys2/WSL compatible). Best for exFAT, FAT32, NTFS, ReFS, and vfat filesystems (typically found on Windows and Android).</p>
+              <p ng-if="editingFolderExisting()" translate class="help-block">Filename encoder cannot be changed after adding the folder. You need to remove the folder, and add it again.</p>
+            </div>
+          </div>
+
         </div>
 
       </div>

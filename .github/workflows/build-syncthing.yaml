@@ -235,7 +235,7 @@ jobs:
       - package-windows
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: unsigned-packages-windows
           path: packages
@@ -484,7 +484,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: packages-macos
 
@@ -641,7 +641,7 @@ jobs:
           path: tools
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
 
       - uses: actions/setup-go@v6
         with:
@@ -776,7 +776,7 @@ jobs:
           path: tools
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: packages-signed
           path: packages
@@ -831,13 +831,13 @@ jobs:
           ref: ${{ github.ref }} # https://github.com/actions/checkout/issues/882
 
       - name: Download signed packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: packages-signed
           path: packages
 
       - name: Download debian packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: debian-packages
           path: packages
@@ -927,7 +927,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: debian-packages
           path: packages

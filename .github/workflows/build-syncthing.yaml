@@ -100,7 +100,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: ["windows-latest", "ubuntu-latest", "macos-latest"]
+        runner: ["windows-latest", "windows-2019", "ubuntu-latest", "macos-latest"]
         # The oldest version in this list should match what we have in our go.mod.
         # Variables don't seem to be supported here, or we could have done something nice.
         go: ["~1.24.0", "~1.25.0"]
@@ -1072,7 +1072,7 @@ jobs:
           echo "DOCKER_TAGS=$tags" >> $GITHUB_ENV
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}

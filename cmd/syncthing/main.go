@@ -42,7 +42,6 @@ import (
 	"github.com/syncthing/syncthing/internal/db"
 	"github.com/syncthing/syncthing/internal/db/sqlite"
 	"github.com/syncthing/syncthing/internal/slogutil"
-	_ "github.com/syncthing/syncthing/lib/automaxprocs"
 	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/dialer"
@@ -155,7 +154,7 @@ type serveCmd struct {
 	AllowNewerConfig          bool          `help:"Allow loading newer than current config version" env:"STALLOWNEWERCONFIG"`
 	Audit                     bool          `help:"Write events to audit file" env:"STAUDIT"`
 	AuditFile                 string        `name:"auditfile" help:"Specify audit file (use \"-\" for stdout, \"--\" for stderr)" placeholder:"PATH" env:"STAUDITFILE"`
-	DBMaintenanceInterval     time.Duration `help:"Database maintenance interval" default:"8h" env:"STDBMAINTENANCEINTERVAL"`
+	DBMaintenanceInterval     time.Duration `help:"Database maintenance interval; set to zero to disable periodic maintenance" default:"8h" env:"STDBMAINTENANCEINTERVAL"`
 	DBDeleteRetentionInterval time.Duration `help:"Database deleted item retention interval" default:"10920h" env:"STDBDELETERETENTIONINTERVAL"`
 	GUIAddress                string        `name:"gui-address" help:"Override GUI address (e.g. \"http://192.0.2.42:8443\")" placeholder:"URL" env:"STGUIADDRESS"`
 	GUIAPIKey                 string        `name:"gui-apikey" help:"Override GUI API key" placeholder:"API-KEY" env:"STGUIAPIKEY"`
@@ -388,8 +387,8 @@ func upgradeViaRest() error {
 	}
 	u.Path = path.Join(u.Path, "rest/system/upgrade")
 	target := u.String()
-	r, _ := http.NewRequest("POST", target, nil)
-	r.Header.Set("X-API-Key", cfg.GUI().APIKey)
+	r, _ := http.NewRequest(http.MethodPost, target, nil)
+	r.Header.Set("X-Api-Key", cfg.GUI().APIKey)
 
 	tr := &http.Transport{
 		DialContext:     dialer.DialContext,
@@ -407,7 +406,7 @@ func upgradeViaRest() error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		bs, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
@@ -529,7 +528,8 @@ func (c *serveCmd) syncthingMain() {
 			err = upgrade.To(release)
 		}
 		if err != nil {
-			if _, ok := err.(*errNoUpgrade); ok || err == errTooEarlyUpgradeCheck || err == errTooEarlyUpgrade {
+			var noUpgradeErr *errNoUpgrade
+			if errors.As(err, &noUpgradeErr) || errors.Is(err, errTooEarlyUpgradeCheck) || errors.Is(err, errTooEarlyUpgrade) {
 				slog.Debug("Initial automatic upgrade", slogutil.Error(err))
 			} else {
 				slog.Info("Initial automatic upgrade", slogutil.Error(err))
@@ -659,13 +659,14 @@ func auditWriter(auditFile string) io.Writer {
 	var auditDest string
 	var auditFlags int
 
-	if auditFile == "-" {
+	switch auditFile {
+	case "-":
 		fd = os.Stdout
 		auditDest = "stdout"
-	} else if auditFile == "--" {
+	case "--":
 		fd = os.Stderr
 		auditDest = "stderr"
-	} else {
+	default:
 		if auditFile == "" {
 			auditFile = locations.GetTimestamped(locations.AuditLog)
 			auditFlags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
@@ -720,7 +721,7 @@ func autoUpgrade(cfg config.Wrapper, app *syncthing.App, evLogger events.Logger)
 
 		checkInterval := time.Duration(opts.AutoUpgradeIntervalH) * time.Hour
 		rel, err := upgrade.LatestRelease(opts.ReleasesURL, build.Version, opts.UpgradeToPreReleases)
-		if err == upgrade.ErrUpgradeUnsupported {
+		if errors.Is(err, upgrade.ErrUpgradeUnsupported) {
 			sub.Unsubscribe()
 			return
 		}
@@ -746,8 +747,13 @@ func autoUpgrade(cfg config.Wrapper, app *syncthing.App, evLogger events.Logger)
 			continue
 		}
 		sub.Unsubscribe()
+		restartDelay := time.Minute
+		evLogger.Log(events.UpgradeRestartScheduled, map[string]any{
+			"delayS":     int(restartDelay / time.Second),
+			"newVersion": rel.Tag,
+		})
 		slog.Error("Automatically upgraded, restarting in 1 minute", slog.String("newVersion", rel.Tag))
-		time.Sleep(time.Minute)
+		time.Sleep(restartDelay)
 		app.Stop(svcutil.ExitUpgrade)
 		return
 	}
@@ -836,7 +842,8 @@ func setPauseState(cfgWrapper config.Wrapper, paused bool) {
 }
 
 func exitCodeForUpgrade(err error) int {
-	if _, ok := err.(*errNoUpgrade); ok {
+	var noUpgradeErr *errNoUpgrade
+	if errors.As(err, &noUpgradeErr) {
 		return svcutil.ExitNoUpgradeAvailable.AsInt()
 	}
 	return svcutil.ExitError.AsInt()

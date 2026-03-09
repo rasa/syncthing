@@ -28,7 +28,7 @@ type OptionsConfiguration struct {
 	LocalAnnMCAddr              string   `json:"localAnnounceMCAddr" xml:"localAnnounceMCAddr" default:"[ff12::8384]:21027"`
 	MaxSendKbps                 int      `json:"maxSendKbps" xml:"maxSendKbps"`
 	MaxRecvKbps                 int      `json:"maxRecvKbps" xml:"maxRecvKbps"`
-	ReconnectIntervalS          int      `json:"reconnectionIntervalS" xml:"reconnectionIntervalS" default:"60"`
+	ReconnectIntervalS          int      `json:"reconnectionIntervalS" xml:"reconnectionIntervalS" default:"20"`
 	RelaysEnabled               bool     `json:"relaysEnabled" xml:"relaysEnabled" default:"true"`
 	RelayReconnectIntervalM     int      `json:"relayReconnectIntervalM" xml:"relayReconnectIntervalM" default:"10"`
 	StartBrowser                bool     `json:"startBrowser" xml:"startBrowser" default:"true"`
@@ -63,13 +63,12 @@ type OptionsConfiguration struct {
 	StunKeepaliveStartS         int      `json:"stunKeepaliveStartS" xml:"stunKeepaliveStartS" default:"180"`
 	StunKeepaliveMinS           int      `json:"stunKeepaliveMinS" xml:"stunKeepaliveMinS" default:"20"`
 	RawStunServers              []string `json:"stunServers" xml:"stunServer" default:"default"`
-	DatabaseTuning              Tuning   `json:"databaseTuning" xml:"databaseTuning" restart:"true"`
 	RawMaxCIRequestKiB          int      `json:"maxConcurrentIncomingRequestKiB" xml:"maxConcurrentIncomingRequestKiB"`
 	AnnounceLANAddresses        bool     `json:"announceLANAddresses" xml:"announceLANAddresses" default:"true"`
 	SendFullIndexOnUpgrade      bool     `json:"sendFullIndexOnUpgrade" xml:"sendFullIndexOnUpgrade"`
 	FeatureFlags                []string `json:"featureFlags" xml:"featureFlag"`
-	AuditEnabled                bool     `json:"auditEnabled" xml:"auditEnabled" default:"false"`
-	AuditFile                   string   `json:"auditFile" xml:"auditFile"`
+	AuditEnabled                bool     `json:"auditEnabled" xml:"auditEnabled" default:"false" restart:"true"`
+	AuditFile                   string   `json:"auditFile" xml:"auditFile" restart:"true"`
 	// The number of connections at which we stop trying to connect to more
 	// devices, zero meaning no limit. Does not affect incoming connections.
 	ConnectionLimitEnough int `json:"connectionLimitEnough" xml:"connectionLimitEnough"`
@@ -135,11 +134,9 @@ func (opts *OptionsConfiguration) prepare(guiPWIsSet bool) {
 	}
 
 	if opts.ConnectionPriorityQUICWAN <= opts.ConnectionPriorityQUICLAN {
-		l.Warnln("Connection priority number for QUIC over WAN must be worse (higher) than QUIC over LAN. Correcting.")
 		opts.ConnectionPriorityQUICWAN = opts.ConnectionPriorityQUICLAN + 1
 	}
 	if opts.ConnectionPriorityTCPWAN <= opts.ConnectionPriorityTCPLAN {
-		l.Warnln("Connection priority number for TCP over WAN must be worse (higher) than TCP over LAN. Correcting.")
 		opts.ConnectionPriorityTCPWAN = opts.ConnectionPriorityTCPLAN + 1
 	}
 
@@ -187,7 +184,7 @@ func (opts OptionsConfiguration) StunServers() []string {
 		case "default":
 			_, records, err := net.LookupSRV("stun", "udp", "syncthing.net")
 			if err != nil {
-				l.Debugf("Unable to resolve primary STUN servers via DNS:", err)
+				l.Debugln("Unable to resolve primary STUN servers via DNS:", err)
 			}
 
 			for _, record := range records {
@@ -238,7 +235,7 @@ func (opts OptionsConfiguration) MaxFolderConcurrency() int {
 		return 0
 	}
 	// Otherwise default to the number of CPU cores in the system as a rough
-	// approximation of system powerfullness.
+	// approximation of system powerfulness.
 	if n := runtime.GOMAXPROCS(-1); n > 0 {
 		return n
 	}

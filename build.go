@@ -431,7 +431,7 @@ func integration(bench bool) {
 		}
 		args = append(args, benchArgs()...)
 	}
-	args = append(args, "./test")
+	args = append(args, "./tests")
 	fmt.Println(args)
 	runPrint(goCmd, args...)
 }

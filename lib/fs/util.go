@@ -67,7 +67,6 @@ func WindowsInvalidPath(name string, encoderType EncoderType, allowReservedFilen
 			return windowsReservedFilename(name)
 		}
 	}
-
 	return nil
 }
 
@@ -78,10 +77,10 @@ func WindowsInvalidFilename(name string, allowReservedFilenames bool) error {
 	if err != nil {
 		return err
 	}
-	if allowReservedFilenames {
-		return nil
+	if !allowReservedFilenames {
+		return windowsReservedFilename(name)
 	}
-	return windowsReservedFilename(name)
+	return nil
 }
 
 // windowsInvalidFilenameChars returns an error if name contains characters that are
@@ -91,7 +90,7 @@ func windowsInvalidFilenameChars(name string) error {
 	if idx := strings.IndexAny(name, windowsDisallowedCharacters); idx != -1 {
 		return fmt.Errorf("%w: %q", errInvalidFilenameWindowsReservedChar, name[idx:idx+1])
 	}
-	return windowsReservedFilename(name)
+	return nil
 }
 
 // windowsReservedFilename returns an error if name is reserved on Windows,

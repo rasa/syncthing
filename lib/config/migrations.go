@@ -106,13 +106,13 @@ func (m migration) apply(cfg *Configuration) {
 
 func migrateToConfigV61(cfg *Configuration) {
 	for i := range cfg.Folders {
-		cfg.Folders[i].AllowReservedFilenames = true
+		cfg.Folders[i].AllowReservedFilenames = false
 	}
 }
 
 func migrateToConfigV60(cfg *Configuration) {
 	for i := range cfg.Folders {
-		cfg.Folders[i].EncoderType = EncoderTypeFat
+		cfg.Folders[i].EncoderType = EncoderTypeNone
 	}
 	migrateToConfigV61(cfg)
 }

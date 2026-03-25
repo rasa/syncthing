@@ -126,7 +126,8 @@ func TestDefaultValues(t *testing.T) {
 					MaxSingleEntrySize: 1024,
 					MaxTotalSize:       4096,
 				},
-				EncoderType: encoderType(fs.DefaultEncoderType()),
+				EncoderType:            EncoderTypeNone, // was encoderType(fs.DefaultEncoderType())
+				AllowReservedFilenames: false,
 			},
 			Device: DeviceConfiguration{
 				Addresses:       []string{"dynamic"},
@@ -206,7 +207,8 @@ func TestDeviceConfig(t *testing.T) {
 					MaxTotalSize:       4096,
 					Entries:            []XattrFilterEntry{},
 				},
-				EncoderType: EncoderTypeNone,
+				EncoderType:            EncoderTypeNone, // was encoderType(fs.DefaultEncoderType())
+				AllowReservedFilenames: false,
 			},
 		}
 

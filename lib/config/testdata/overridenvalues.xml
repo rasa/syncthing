@@ -81,8 +81,9 @@
             <copyRangeMethod>standard</copyRangeMethod>
             <caseSensitiveFS>false</caseSensitiveFS>
             <junctionsAsDirs>false</junctionsAsDirs>
-            <encoderType>fat</encoderType>
-            <allowReservedFilenames>true</allowReservedFilenames>
+            <encoderType>none</encoderType>
+            <allowReservedFilenames>false</allowReservedFilenames>
+            <caseSensitiveDir>false</caseSensitiveDir>
         </folder>
         <device id="" compression="metadata" introducer="false" skipIntroductionRemovals="false" introducedBy="">
             <address>dynamic</address>

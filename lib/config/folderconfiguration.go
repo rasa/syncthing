@@ -88,6 +88,7 @@ type FolderConfiguration struct {
 	SyncXattrs              bool                        `json:"syncXattrs" xml:"syncXattrs"`
 	SendXattrs              bool                        `json:"sendXattrs" xml:"sendXattrs"`
 	XattrFilter             XattrFilter                 `json:"xattrFilter" xml:"xattrFilter"`
+	CaseSensitiveDir        bool                        `json:"caseSensitiveDir" xml:"caseSensitiveDir"`
 	// Legacy deprecated
 	DeprecatedReadOnly       bool    `json:"-" xml:"ro,attr,omitempty"`        // Deprecated: Do not use.
 	DeprecatedMinDiskFreePct float64 `json:"-" xml:"minDiskFreePct,omitempty"` // Deprecated: Do not use.
@@ -258,6 +259,10 @@ func (f *FolderConfiguration) CreateRoot() (err error) {
 
 	if _, err = filesystem.Stat("."); fs.IsNotExist(err) {
 		err = filesystem.MkdirAll(".", permBits)
+	}
+
+	if err == nil && f.CaseSensitiveDir {
+		err = fs.EnableCaseSensitivity(filesystem.URI())
 	}
 
 	return err

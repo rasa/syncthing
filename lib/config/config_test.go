@@ -126,6 +126,7 @@ func TestDefaultValues(t *testing.T) {
 					MaxSingleEntrySize: 1024,
 					MaxTotalSize:       4096,
 				},
+				CaseSensitiveDir: false,
 			},
 			Device: DeviceConfiguration{
 				Addresses:       []string{"dynamic"},
@@ -204,6 +205,7 @@ func TestDeviceConfig(t *testing.T) {
 					MaxTotalSize:       4096,
 					Entries:            []XattrFilterEntry{},
 				},
+				CaseSensitiveDir: false,
 			},
 		}
 

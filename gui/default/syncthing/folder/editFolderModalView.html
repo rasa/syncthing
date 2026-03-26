@@ -396,8 +396,26 @@
               <input name="xattrMaxTotalSize" id="xattrMaxTotalSize" class="form-control" type="number" ng-model="currentFolder.xattrFilter.maxTotalSize" required="" aria-required="true" min="0" />
             </div>
           </div>
-        </div>
 
+          <div class="row form-group">
+            <div class="col-md-12">
+              <label translate>Windows Specific Settings</label>
+              &nbsp;<a href="{{docsURL('users/windows')}}" target="_blank"><span class="fas fa-question-circle"></span>&nbsp;<span translate>Help</span></a></br>
+              <div class="row">
+                <div class="col-md-6">
+                  <label>
+                    <input type="checkbox" ng-model="currentFolder.caseSensitiveDir"/> &nbsp;<span translate>Case Sensitive</span>
+                  </label>
+                  <p class="help-block">
+                    <span translate>Enable case sensitivity for the folder (Must be a new or empty folder on a local NTFS partition).</span><br/>
+                    <span>NOTE: Some applications may open a different file then the expected one if two differ only by case.</span>
+                  </p>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </form>
   </div>

@@ -418,6 +418,16 @@
               <div class="row">
                 <div class="col-md-6">
                   <label>
+                    <input type="checkbox" ng-model="currentFolder.allowReservedFilenames"/>&nbsp;<span translate>Reserved Filenames</span>
+                  </label>
+                  <p class="help-block">
+                    <span translate>Encode filenames ending with a period, or space, and the filenames</span>
+                    <span>AUX.*, CON.*, NUL.*, PRN.*, COMx.*, LPTx.*.</span><br/>
+                    <span>NOTE: Encoded filenames can be difficult to rename/delete in some applications and on the command line.</span>
+                  </p>
+                </div>
+                <div class="col-md-6">
+                  <label>
                     <input type="checkbox" ng-model="currentFolder.caseSensitiveDir"/> &nbsp;<span translate>Case Sensitive</span>
                   </label>
                   <p class="help-block">

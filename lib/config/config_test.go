@@ -208,7 +208,7 @@ func TestDeviceConfig(t *testing.T) {
 					MaxTotalSize:       4096,
 					Entries:            []XattrFilterEntry{},
 				},
-				EncoderType:            encoderType(fs.DefaultEncoderType()),
+				EncoderType:            EncoderTypeNone, // encoderType(fs.DefaultEncoderType()),
 				AllowReservedFilenames: false,
 				CaseSensitiveDir:       false,
 			},

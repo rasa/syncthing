@@ -29,6 +29,7 @@ import (
 // put the newest on top for readability.
 var (
 	migrations = migrationSet{
+		{62, migrateToConfigV62},
 		{61, migrateToConfigV61},
 		{60, migrateToConfigV60},
 		{52, migrateToConfigV52},
@@ -101,6 +102,12 @@ func (m migration) apply(cfg *Configuration) {
 		m.convert(cfg)
 	}
 	cfg.Version = m.targetVersion
+}
+
+func migrateToConfigV62(cfg *Configuration) {
+	for i := range cfg.Folders {
+		cfg.Folders[i].CaseSensitiveDir = false
+	}
 }
 
 func migrateToConfigV61(cfg *Configuration) {

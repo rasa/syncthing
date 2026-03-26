@@ -127,6 +127,7 @@ func TestDefaultValues(t *testing.T) {
 				BlockIndexing:     true,
 				EncoderType:       encoderType(fs.DefaultEncoderType()),
 				ReservedFilenames: false,
+				CaseSensitiveDir:  false,
 			},
 			Device: DeviceConfiguration{
 				Addresses:       []string{"dynamic"},
@@ -209,6 +210,7 @@ func TestDeviceConfig(t *testing.T) {
 				BlockIndexing:     true,
 				EncoderType:       EncoderTypeNone,
 				ReservedFilenames: false,
+				CaseSensitiveDir:  false,
 			},
 		}
 

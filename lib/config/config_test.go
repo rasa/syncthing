@@ -125,7 +125,11 @@ func TestDefaultValues(t *testing.T) {
 					MaxSingleEntrySize: 1024,
 					MaxTotalSize:       4096,
 				},
+<<<<<<< HEAD
 				BlockIndexing: true,
+=======
+				CaseSensitiveDir: false,
+>>>>>>> 306743b61 (feat: Add folder case-sensitivity support on Windows)
 			},
 			Device: DeviceConfiguration{
 				Addresses:       []string{"dynamic"},
@@ -205,6 +209,7 @@ func TestDeviceConfig(t *testing.T) {
 					Entries:            []XattrFilterEntry{},
 				},
 				BlockIndexing: true,
+				CaseSensitiveDir: false,
 			},
 		}
 

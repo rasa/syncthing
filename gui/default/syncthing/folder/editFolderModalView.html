@@ -7,6 +7,7 @@
         <li ng-class="{'disabled': currentFolder._editing == 'new-ignores'}"><a data-toggle="tab" href="{{currentFolder._editing == 'new-ignores' ? '' : '#folder-versioning'}}"><span class="fa fa-files-o"></span> <span translate>File Versioning</span></a></li>
         <li ng-class="{'disabled': currentFolder._recvEnc}"><a data-toggle="tab" href="{{currentFolder._recvEnc ? '' : '#folder-ignores'}}"><span class="fas fa-filter"></span> <span translate>Ignore Patterns</span></a></li>
         <li ng-class="{'disabled': currentFolder._editing == 'new-ignores'}"><a data-toggle="tab" href="{{currentFolder._editing == 'new-ignores' ? '' : '#folder-advanced'}}"><span class="fas fa-cogs"></span> <span translate>Advanced</span></a></li>
+        <li ng-class="{'disabled': currentFolder._editing == 'new-ignores'}"><a data-toggle="tab" href="{{currentFolder._editing == 'new-ignores' ? '' : '#folder-os'}}"><span class="fas fa-windows"></span> <span translate>OS Specific</span></a></li>
       </ul>
       <div class="tab-content">
 
@@ -278,17 +279,6 @@
                 Enter a non-negative number (e.g., "2.35") and select a unit. Percentages are as part of the total disk size.
               </p>
             </div>
-            <div class="col-md-6 form-group" ng-class="{'has-error': folderEditor.folderPath.$invalid && folderEditor.folderPath.$dirty && !editingFolderDefaults()}">
-              <label for="encoderType" translate>Filename Encoder</label>
-              &nbsp;<a href="{{docsURL('users/filenameencoders')}}" target="_blank"><span class="fas fa-question-circle"></span>&nbsp;<span translate>Help</span></a>
-              <select class="form-control" ng-model="currentFolder.encoderType" ng-disabled="editingFolderExisting()">
-                <option value="none" ng-disabled="editingFolderExisting()" translate>None</option>
-                <option value="fat" ng-disabled="editingFolderExisting()" translate>FAT</option>
-              </select>
-              <p ng-if="currentFolder.encoderType == 'none'" translate class="help-block">Filenames are not encoded (best for Linux, macOS, and other unix-like systems, using APFS, Btrfs, ext3/4, HFS+, XFS, ZFS, etc. filesystems).</p>
-              <p ng-if="currentFolder.encoderType == 'fat'" translate class="help-block">Filenames containing the characters <tt>:*?&lt;&gt;|&quot;</tt> are encoded (best for Windows, Android and similar systems, using exFAT, FAT32, NTFS, ReFS, vfat, etc. filesystems).</p>
-              <p ng-if="editingFolderExisting()" translate class="help-block">Filename encoder cannot be changed after adding the folder. You need to remove the folder, and add it again.</p>
-            </div>
           </div>
 
           <div class="row">
@@ -410,6 +400,23 @@
               <input name="xattrMaxTotalSize" id="xattrMaxTotalSize" class="form-control" type="number" ng-model="currentFolder.xattrFilter.maxTotalSize" required="" aria-required="true" min="0" />
             </div>
           </div>
+        </div>
+
+        <div id="folder-os" class="tab-pane">
+
+          <div class="row">
+            <div class="col-md-6 form-group" ng-class="{'has-error': folderEditor.folderPath.$invalid && folderEditor.folderPath.$dirty && !editingFolderDefaults()}">
+              <label for="encoderType" translate>Filename Encoder</label>
+              &nbsp;<a href="{{docsURL('users/filenameencoders')}}" target="_blank"><span class="fas fa-question-circle"></span>&nbsp;<span translate>Help</span></a>
+              <select class="form-control" ng-model="currentFolder.encoderType" ng-disabled="editingFolderExisting()">
+                <option value="none" ng-disabled="editingFolderExisting()" translate>None</option>
+                <option value="fat" ng-disabled="editingFolderExisting()" translate>FAT</option>
+              </select>
+              <p ng-if="currentFolder.encoderType == 'none'" translate class="help-block">Filenames are not encoded (best for Linux, macOS, and other unix-like systems, using APFS, Btrfs, ext3/4, HFS+, XFS, ZFS, etc. filesystems).</p>
+              <p ng-if="currentFolder.encoderType == 'fat'" translate class="help-block">Filenames containing the characters <tt>:*?&lt;&gt;|&quot;</tt> are encoded (best for Windows, Android and similar systems, using exFAT, FAT32, NTFS, ReFS, vfat, etc. filesystems).</p>
+              <p ng-if="editingFolderExisting()" translate class="help-block">To change the filename encoder, remove the folder, and add it again, selecting the desired encoder.</p>
+            </div>
+          </div>
 
           <div class="row form-group">
             <div class="col-md-12">
@@ -421,25 +428,25 @@
                     <input type="checkbox" ng-model="currentFolder.allowReservedFilenames"/>&nbsp;<span translate>Reserved Filenames</span>
                   </label>
                   <p class="help-block">
-                    <span translate>Encode filenames ending with a period, or space, and the filenames</span>
-                    <span>AUX.*, CON.*, NUL.*, PRN.*, COMx.*, LPTx.*.</span><br/>
+                    <span translate>Encode the reserved filenames</span>
+                    <span>AUX.*, CON.*, NUL.*, PRN.*, COMx.*, LPTx.*,</span>
+                    <span translate>as well as filenames ending with a period, or space.</span><br/><br/>
                     <span translate>NOTE: Encoded filenames can be difficult to rename/delete in some applications and on the command line.</span>
                   </p>
                 </div>
                 <div class="col-md-6">
                   <label>
-                    <input type="checkbox" ng-model="currentFolder.caseSensitiveDir"/> &nbsp;<span translate>Case Sensitive</span>
+                    <input type="checkbox" ng-model="currentFolder.caseSensitiveDir"/> &nbsp;<span translate>Case Sensitivity</span>
                   </label>
                   <p class="help-block">
-                    <span translate>Enable case sensitivity for the folder (Must be a new or empty folder on a local NTFS partition).</span><br/>
+                    <span translate>Enable case sensitivity (Must be a new or empty folder on a local NTFS partition).</span><br/><br/>
                     <span translate>NOTE: Some applications may open a different file then the expected one if two differ only by case.</span>
                   </p>
                 </div>
-
               </div>
             </div>
           </div>
-        </div>
+        </div>        
       </div>
     </form>
   </div>

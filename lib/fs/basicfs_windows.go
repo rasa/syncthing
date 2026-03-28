@@ -21,14 +21,20 @@ import (
 
 const optNoFollow = 0 // not defined for Windows
 
-var errNotSupported = errors.New("symlinks not supported")
-
-func (BasicFilesystem) ReadSymlink(path string) (string, error) {
-	return "", errNotSupported
+func (f *BasicFilesystem) CreateSymlink(target, name string) error {
+	name, err := f.rooted(name)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(target, name)
 }
 
-func (BasicFilesystem) CreateSymlink(target, name string) error {
-	return errNotSupported
+func (f *BasicFilesystem) ReadSymlink(name string) (string, error) {
+	name, err := f.rooted(name)
+	if err != nil {
+		return "", err
+	}
+	return os.Readlink(name)
 }
 
 func (f *BasicFilesystem) Unhide(name string) error {

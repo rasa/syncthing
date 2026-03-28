@@ -82,6 +82,7 @@
             <encoderType>none</encoderType>
             <reservedFilenames>true</reservedFilenames>
             <caseSensitiveDir>false</caseSensitiveDir>
+            <enableSymlinks>false</enableSymlinks>
         </folder>
         <device id="" compression="metadata" introducer="false" skipIntroductionRemovals="false" introducedBy="">
             <address>dynamic</address>

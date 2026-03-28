@@ -396,7 +396,7 @@ loop:
 				f.queue.Push(file.Name, file.Size, file.ModTime())
 			}
 
-		case (build.IsWindows || build.IsAndroid) && file.IsSymlink():
+		case (build.IsWindows || build.IsAndroid) && file.IsSymlink() && !f.EnableSymlinks:
 			if err := f.handleSymlinkCheckExisting(file, scanChan); err != nil {
 				f.newPullError(file.Name, fmt.Errorf("handling unsupported symlink: %w", err))
 				break

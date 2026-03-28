@@ -90,6 +90,7 @@ type FolderConfiguration struct {
 	EncoderType             EncoderType                 `json:"encoderType" xml:"encoderType" default:"unset"`
 	AllowReservedFilenames  bool                        `json:"allowReservedFilenames" xml:"allowReservedFilenames"`
 	CaseSensitiveDir        bool                        `json:"caseSensitiveDir" xml:"caseSensitiveDir"`
+	EnableSymlinks          bool                        `json:"enableSymlinks" xml:"enableSymlinks"`
 	// Legacy deprecated
 	DeprecatedReadOnly       bool    `json:"-" xml:"ro,attr,omitempty"`        // Deprecated: Do not use.
 	DeprecatedMinDiskFreePct float64 `json:"-" xml:"minDiskFreePct,omitempty"` // Deprecated: Do not use.

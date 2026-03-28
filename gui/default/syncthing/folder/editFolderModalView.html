@@ -400,6 +400,7 @@
               <input name="xattrMaxTotalSize" id="xattrMaxTotalSize" class="form-control" type="number" ng-model="currentFolder.xattrFilter.maxTotalSize" required="" aria-required="true" min="0" />
             </div>
           </div>
+
         </div>
 
         <div id="folder-os" class="tab-pane">
@@ -444,6 +445,20 @@
                   </p>
                 </div>
               </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <label>
+                    <input type="checkbox" ng-model="currentFolder.enableSymlinks"/>&nbsp;<span translate>Symbolic Links</span>
+                  </label>
+                  <p class="help-block">
+                    <span translate>Enable sending/receiving of symbolic links.</span><br/><br/>
+                    <span translate>NOTE: Requires administrator rights, or developer mode.</span>
+                    <span translate>May cause sync failures, as Windows has both file and folder symlinks.</span>
+                  </p>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>        

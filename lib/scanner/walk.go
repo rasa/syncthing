@@ -67,6 +67,8 @@ type Config struct {
 	ScanXattrs bool
 	// Filter for extended attributes
 	XattrFilter XattrFilter
+	// Enable Symlinks on Windows
+	EnableSymlinks bool
 }
 
 type CurrentFiler interface {
@@ -542,9 +544,9 @@ func (w *walker) walkDir(ctx context.Context, relPath string, info fs.FileInfo, 
 }
 
 func (w *walker) walkSymlink(ctx context.Context, relPath string, info fs.FileInfo, finishedChan chan<- ScanResult) error {
-	// Symlinks are not supported on Windows. We ignore instead of returning
+	// If symlink support is not enabled on Windows, we ignore instead of returning
 	// an error.
-	if build.IsWindows {
+	if build.IsWindows && !w.EnableSymlinks {
 		return nil
 	}
 
@@ -746,6 +748,12 @@ func CreateFileInfo(fi fs.FileInfo, name string, filesystem fs.Filesystem, scanO
 		if err != nil {
 			return protocol.FileInfo{}, err
 		}
+
+		rel, err := SymlinkTargetRelativeToRoot(filesystem.URI(), target)
+		if err == nil {
+			target = rel
+		}
+
 		f.SymlinkTarget = []byte(target)
 		f.NoPermissions = true // Symlinks don't have permissions of their own
 		return f, nil
@@ -764,4 +772,36 @@ func CreateFileInfo(fi fs.FileInfo, name string, filesystem fs.Filesystem, scanO
 	f.Type = protocol.FileInfoTypeFile
 
 	return f, nil
+}
+
+// SymlinkTargetRelativeToRoot converts an absolute symlink target under root
+// into a path relative to root.
+//
+// If target is already relative, it is returned unchanged except that "\" is
+// converted to "/".
+func SymlinkTargetRelativeToRoot(root, target string) (string, error) {
+	root = filepath.Clean(root)
+	if root == "" {
+		return "", fmt.Errorf("root is empty")
+	}
+
+	// Leave relative targets alone.
+	if !filepath.IsAbs(target) {
+		return filepath.ToSlash(target), nil
+	}
+
+	absTarget := filepath.Clean(target)
+
+	rel, err := filepath.Rel(root, absTarget)
+	if err != nil {
+		return "", err
+	}
+	rel = filepath.Clean(rel)
+
+	// Reject absolute targets outside root.
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("target %q is outside root %q", target, root)
+	}
+
+	return filepath.ToSlash(rel), nil
 }

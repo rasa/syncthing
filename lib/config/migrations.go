@@ -30,6 +30,7 @@ import (
 // put the newest on top for readability.
 var (
 	migrations = migrationSet{
+		{63, migrateToConfigV63},
 		{52, migrateToConfigV52},
 		{51, migrateToConfigV51},
 		{50, migrateToConfigV50},
@@ -100,6 +101,12 @@ func (m migration) apply(cfg *Configuration) {
 		m.convert(cfg)
 	}
 	cfg.Version = m.targetVersion
+}
+
+func migrateToConfigV63(cfg *Configuration) {
+	for i := range cfg.Folders {
+		cfg.Folders[i].EnableSymlinks = false
+	}
 }
 
 func migrateToConfigV52(cfg *Configuration) {

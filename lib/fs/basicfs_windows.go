@@ -21,18 +21,26 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-var errNotSupported = errors.New("symlinks not supported")
-
-func (BasicFilesystem) SymlinksSupported() bool {
-	return false
+// SymlinksSupported() is not used anywhere. Symlinks on Windows can be enabled
+// via the EnableSymlink folder option.
+func (*BasicFilesystem) SymlinksSupported() bool {
+	return true
 }
 
-func (BasicFilesystem) ReadSymlink(path string) (string, error) {
-	return "", errNotSupported
+func (f *BasicFilesystem) CreateSymlink(target, name string) error {
+	name, err := f.rooted(name)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(target, name)
 }
 
-func (BasicFilesystem) CreateSymlink(target, name string) error {
-	return errNotSupported
+func (f *BasicFilesystem) ReadSymlink(name string) (string, error) {
+	name, err := f.rooted(name)
+	if err != nil {
+		return "", err
+	}
+	return os.Readlink(name)
 }
 
 // Required due to https://github.com/golang/go/issues/10900

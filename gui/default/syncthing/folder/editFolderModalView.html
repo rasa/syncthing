@@ -422,10 +422,21 @@
               <p ng-if="currentFolder.encoderType == 'wsl'" translate class="help-block">Filenames containing *?:&lt;&gt;|&quot; are encoded using Unicode Private Use characters (Cygwin/GitBash/Msys2/WSL compatible). Best for exFAT, FAT32, NTFS, ReFS, and vfat filesystems (typically found on Windows and Android).</p>
               <p ng-if="editingFolderExisting()" translate class="help-block">Filename encoder cannot be changed after adding the folder. You need to remove the folder, and add it again.</p>
             </div>
+
+            <div class="col-md-6 form-group">
+              <label>
+                <input type="checkbox" ng-model="currentFolder.caseSensitiveDir" ng-disabled="editingFolderExisting()"/> &nbsp;
+                <span translate>Case Sensitivity (Windows only)</span>
+              </label>
+              <p class="help-block">
+                <span translate>Enable case sensitivity (Must be a new or empty folder on a local NTFS partition).</span><br/><br/>
+                <span translate>NOTE: Some applications may open a different file then the expected one if two differ only by case.</span>
+                <span translate>NOTE: If enabled, set the advanced setting caseSensitiveFS to true, as well.</span>
+              </p>
+            </div>
           </div>
 
         </div>
-
       </div>
     </form>
   </div>

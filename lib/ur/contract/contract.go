@@ -129,6 +129,7 @@ type Report struct {
 		SyncOwnership           int            `json:"syncOwnership,omitempty" metric:"folder_feature{feature=SyncOwnership},summary" since:"3"`
 		EncoderType             map[string]int `json:"encoderType,omitempty" metric:"folder_encoder_type,summaryVec:type" since:"3"`
 		ReservedFilenames       int            `json:"reservedFilenames,omitempty" metric:"folder_feature{feature=ReservedFilenames},summary" since:"3"`
+		CaseSensitiveDir        int            `json:"caseSensitiveDir,omitempty" metric:"folder_feature{feature=CaseSensitiveDir},summary" since:"3"`
 	} `json:"folderUsesV3,omitzero" since:"3"`
 
 	DeviceUsesV3 struct {

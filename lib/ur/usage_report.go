@@ -284,6 +284,9 @@ func (s *Service) reportData(ctx context.Context, urVersion int, preview bool) (
 			if cfg.ReservedFilenames {
 				report.FolderUsesV3.ReservedFilenames++
 			}
+			if cfg.CaseSensitiveDir {
+				report.FolderUsesV3.CaseSensitiveDir++
+			}
 		}
 		slices.Sort(report.FolderUsesV3.FsWatcherDelays)
 

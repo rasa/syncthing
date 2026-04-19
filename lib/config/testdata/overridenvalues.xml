@@ -83,6 +83,7 @@
             <junctionsAsDirs>false</junctionsAsDirs>
             <encoderType>none</encoderType>
             <reservedFilenames>false</reservedFilenames>
+            <caseSensitiveDir>false</caseSensitiveDir>
         </folder>
         <device id="" compression="metadata" introducer="false" skipIntroductionRemovals="false" introducedBy="">
             <address>dynamic</address>

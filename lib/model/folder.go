@@ -673,6 +673,7 @@ func (f *folder) scanSubdirsChangedAndNew(ctx context.Context, subDirs []string,
 		ScanXattrs:            f.SendXattrs || f.SyncXattrs,
 		XattrFilter:           f.XattrFilter,
 		EncoderType:           f.EncoderType.ToEncoderType(),
+		EnableSymlinks:        f.EnableSymlinks,
 	}
 	var fchan chan scanner.ScanResult
 	if f.Type == config.FolderTypeReceiveEncrypted {

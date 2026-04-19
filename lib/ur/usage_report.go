@@ -287,6 +287,9 @@ func (s *Service) reportData(ctx context.Context, urVersion int, preview bool) (
 			if cfg.CaseSensitiveDir {
 				report.FolderUsesV3.CaseSensitiveDir++
 			}
+			if cfg.EnableSymlinks {
+				report.FolderUsesV3.EnableSymlinks++
+			}
 		}
 		slices.Sort(report.FolderUsesV3.FsWatcherDelays)
 

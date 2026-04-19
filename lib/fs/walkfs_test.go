@@ -11,17 +11,18 @@ import (
 	"fmt"
 	osexec "os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/syncthing/syncthing/lib/build"
 )
 
 func testWalkSkipSymlink(t *testing.T, fsType FilesystemType, uri string, opts []Option) {
-	if build.IsWindows {
-		t.Skip("Symlinks skipping is not tested on windows")
-	}
+	fs := NewFilesystem(fsType, uri)
 
-	fs := NewFilesystem(fsType, uri, opts...)
+	if !fs.SymlinksSupported() {
+		t.Skip("Symlinks not supported on " + runtime.GOOS)
+	}
 
 	if err := fs.MkdirAll("target/foo", 0o755); err != nil {
 		t.Fatal(err)

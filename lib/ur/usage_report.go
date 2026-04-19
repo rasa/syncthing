@@ -281,6 +281,9 @@ func (s *Service) reportData(ctx context.Context, urVersion int, preview bool) (
 				report.FolderUsesV3.SyncOwnership++
 			}
 			report.FolderUsesV3.EncoderType[cfg.EncoderType.String()]++
+			if cfg.ReservedFilenames {
+				report.FolderUsesV3.ReservedFilenames++
+			}
 		}
 		slices.Sort(report.FolderUsesV3.FsWatcherDelays)
 

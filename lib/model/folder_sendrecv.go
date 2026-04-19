@@ -333,7 +333,7 @@ loop:
 
 		var err error
 		if build.IsWindows {
-			err = fs.WindowsInvalidPath(file.Name, f.EncoderType.ToEncoderType())
+			err = fs.WindowsInvalidPath(file.Name, f.EncoderType.ToEncoderType(), f.ReservedFilenames)
 		}
 
 		switch {
@@ -342,7 +342,7 @@ loop:
 			f.sl.DebugContext(ctx, "Handling ignored file", file.LogAttr())
 			dbUpdateChan <- dbUpdateJob{file, dbUpdateInvalidate}
 
-		case err != nil:
+		case build.IsWindows && err != nil:
 			if file.IsDeleted() {
 				// Just pretend we deleted it, no reason to create an error
 				// about a deleted file that we can't have anyway.

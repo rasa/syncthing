@@ -15,7 +15,6 @@ import (
 	"os" // @TODO REMOVE ME
 	"slices"
 	"sort"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -40,8 +39,6 @@ const (
 	alnum              = "0123456789abcdefghijklmnopqrstuvwxyz"
 )
 
-var verbose = strings.Contains(os.Getenv("STTRACE"), "verbose")
-
 var (
 	srcTypes   = []srcType{srcTypeDecoded, srcTypeEncoded}
 	srcTypeMap = map[srcType]string{
@@ -49,13 +46,6 @@ var (
 		srcTypeEncoded: "encoded",
 	}
 )
-
-var dstTypeMap = map[dstType]string{
-	dstTypeDecoded:       "decoded",
-	dstTypeEncoded:       "encoded",
-	dstTypeRejectEncoded: "non-encoded",
-	dstTypeSkipped:       "<skipped>", // not used
-}
 
 var alnumMap = map[rune]rune{}
 

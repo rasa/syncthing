@@ -33,6 +33,8 @@ const ( // @TODO REMOVE ME
 
 var testMode TestMode = testModeWSL
 
+var verbose = strings.Contains(os.Getenv("STTRACE"), "verbose")
+
 // srcType is the type of source encoder.
 type srcType int
 
@@ -58,6 +60,13 @@ const (
 	// pre-encoded filenames.
 	dstTypeSkipped
 )
+
+var dstTypeMap = map[dstType]string{
+	dstTypeDecoded:       "decoded",
+	dstTypeEncoded:       "encoded",
+	dstTypeRejectEncoded: "non-encoded",
+	dstTypeSkipped:       "<skipped>", // not used
+}
 
 type walkResults struct {
 	found   int

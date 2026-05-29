@@ -490,6 +490,7 @@ func TestRooted(t *testing.T) {
 
 	for _, tc := range cases {
 		fs := BasicFilesystem{root: tc.root}
+		fs.SetRooter(&fs) // or panic will ensue
 		res, err := fs.rooted(tc.rel)
 		if tc.ok {
 			if err != nil {
@@ -652,17 +653,17 @@ func TestXattr(t *testing.T) {
 
 func TestBasicWalkSkipSymlink(t *testing.T) {
 	_, dir := setup(t)
-	testWalkSkipSymlink(t, FilesystemTypeBasic, dir)
+	testWalkSkipSymlink(t, FilesystemTypeBasic, dir, testOpts())
 }
 
 func TestWalkTraverseDirJunct(t *testing.T) {
 	_, dir := setup(t)
-	testWalkTraverseDirJunct(t, FilesystemTypeBasic, dir)
+	testWalkTraverseDirJunct(t, FilesystemTypeBasic, dir, testOpts())
 }
 
 func TestWalkInfiniteRecursion(t *testing.T) {
 	_, dir := setup(t)
-	testWalkInfiniteRecursion(t, FilesystemTypeBasic, dir)
+	testWalkInfiniteRecursion(t, FilesystemTypeBasic, dir, testOpts())
 }
 
 type testXattrFilter struct{}

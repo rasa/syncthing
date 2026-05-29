@@ -24,6 +24,7 @@ import (
 
 	"github.com/syncthing/syncthing/internal/slogutil"
 	"github.com/syncthing/syncthing/lib/build"
+	"github.com/syncthing/syncthing/lib/encoder"
 	"github.com/syncthing/syncthing/lib/fs"
 	"github.com/syncthing/syncthing/lib/netutil"
 	"github.com/syncthing/syncthing/lib/protocol"
@@ -33,7 +34,7 @@ import (
 
 const (
 	OldestHandledVersion = 10
-	CurrentVersion       = 52
+	CurrentVersion       = 60
 	MaxRescanIntervalS   = 365 * 24 * 60 * 60
 )
 
@@ -662,6 +663,12 @@ func (defaults *Defaults) prepare(myID protocol.DeviceID, existingDevices map[pr
 	ensureZeroForNodefault(&DeviceConfiguration{}, &defaults.Device)
 	defaults.Folder.prepare(myID, existingDevices)
 	defaults.Device.prepare(nil)
+	// Default to the Rclone encoder on Windows and Android per @calmh's comment at
+	// https://github.com/syncthing/syncthing/issues/9539#issuecomment-2141394377
+	// Only set the default encoder type if it hasn't already been set.
+	if defaults.Folder.EncoderType == EncoderTypeUnset {
+		defaults.Folder.EncoderType = encoderType(fs.DefaultEncoderType())
+	}
 }
 
 func ensureZeroForNodefault(empty interface{}, target interface{}) {
@@ -707,4 +714,19 @@ func (i Ignores) Copy() Ignores {
 	out := Ignores{Lines: make([]string, len(i.Lines))}
 	copy(out.Lines, i.Lines)
 	return out
+}
+
+func encoderType(et encoder.EncoderType) EncoderType {
+	switch et {
+	case encoder.EncoderTypeUnset:
+		return EncoderTypeUnset
+	case encoder.EncoderTypeNone:
+		return EncoderTypeNone
+	case encoder.EncoderTypeRclone:
+		return EncoderTypeRclone
+	case encoder.EncoderTypeWSL:
+		return EncoderTypeWSL
+	default:
+		panic("bug: Unknown encoder: " + fs.DefaultEncoderType().String())
+	}
 }

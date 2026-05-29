@@ -125,6 +125,7 @@ func TestDefaultValues(t *testing.T) {
 					MaxTotalSize:       4096,
 				},
 				BlockIndexing: true,
+				EncoderType:   encoderType(fs.DefaultEncoderType()),
 			},
 			Device: DeviceConfiguration{
 				Addresses:       []string{"dynamic"},
@@ -138,6 +139,7 @@ func TestDefaultValues(t *testing.T) {
 		},
 		IgnoredDevices: []ObservedDevice{},
 	}
+
 	expected.Devices = []DeviceConfiguration{expected.Defaults.Device.Copy()}
 	expected.Devices[0].DeviceID = device1
 	expected.Devices[0].Name, _ = os.Hostname()
@@ -204,6 +206,7 @@ func TestDeviceConfig(t *testing.T) {
 					Entries:            []XattrFilterEntry{},
 				},
 				BlockIndexing: true,
+				EncoderType:   EncoderTypeNone,
 			},
 		}
 

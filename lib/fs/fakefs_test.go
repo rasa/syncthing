@@ -25,7 +25,6 @@ func TestFakeFS(t *testing.T) {
 	// Test some basic aspects of the fakeFS
 
 	fs := newFakeFilesystem("/foo/bar/baz")
-
 	// MkdirAll
 	err := fs.MkdirAll("dira/dirb", 0o755)
 	if err != nil {
@@ -64,7 +63,7 @@ func TestFakeFS(t *testing.T) {
 		t.Fatal(err)
 	}
 	if info.Name() != "test" {
-		t.Error("wrong name:", info.Name())
+		t.Errorf("got %v, want %v", info.Name(), "test")
 	}
 	if info.Size() != 5 {
 		t.Error("wrong size:", info.Size())
@@ -76,7 +75,7 @@ func TestFakeFS(t *testing.T) {
 		t.Fatal(err)
 	}
 	if info.Name() != "test" {
-		t.Error("wrong name:", info.Name())
+		t.Errorf("got %v, want %v", info.Name(), "test")
 	}
 	if info.Size() != 5 {
 		t.Error("wrong size:", info.Size())
@@ -128,6 +127,9 @@ func TestFakeFS(t *testing.T) {
 		t.Fatal(err)
 	} else if info.Owner() != 1234 || info.Group() != 5678 {
 		t.Error("Wrong owner/group")
+	}
+	if err = cleanup(fs); err != nil {
+		t.Fatal(err)
 	}
 }
 

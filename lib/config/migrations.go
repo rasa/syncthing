@@ -30,6 +30,7 @@ import (
 // put the newest on top for readability.
 var (
 	migrations = migrationSet{
+		{60, migrateToConfigV60},
 		{52, migrateToConfigV52},
 		{51, migrateToConfigV51},
 		{50, migrateToConfigV50},
@@ -100,6 +101,12 @@ func (m migration) apply(cfg *Configuration) {
 		m.convert(cfg)
 	}
 	cfg.Version = m.targetVersion
+}
+
+func migrateToConfigV60(cfg *Configuration) {
+	for i := range cfg.Folders {
+		cfg.Folders[i].EncoderType = EncoderTypeNone
+	}
 }
 
 func migrateToConfigV52(cfg *Configuration) {

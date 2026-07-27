@@ -125,8 +125,9 @@ func TestDefaultValues(t *testing.T) {
 					MaxSingleEntrySize: 1024,
 					MaxTotalSize:       4096,
 				},
-				BlockIndexing: true,
-				EncoderType: encoderType(fs.DefaultEncoderType()),
+				BlockIndexing:     true,
+				EncoderType:       encoderType(fs.DefaultEncoderType()),
+				ReservedFilenames: false,
 			},
 			Device: DeviceConfiguration{
 				Addresses:       []string{"dynamic"},
@@ -206,8 +207,9 @@ func TestDeviceConfig(t *testing.T) {
 					MaxTotalSize:       4096,
 					Entries:            []XattrFilterEntry{},
 				},
-				BlockIndexing: true,
-				EncoderType: EncoderTypeNone,
+				BlockIndexing:     true,
+				EncoderType:       EncoderTypeNone,
+				ReservedFilenames: false,
 			},
 		}
 

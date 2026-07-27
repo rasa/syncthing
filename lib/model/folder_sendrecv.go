@@ -332,7 +332,7 @@ loop:
 
 		var err error
 		if build.IsWindows {
-			err = fs.WindowsInvalidPath(file.Name, f.EncoderType.ToEncoderType())
+			err = fs.WindowsInvalidPath(file.Name, f.EncoderType.ToEncoderType(), f.ReservedFilenames)
 		}
 
 		switch {

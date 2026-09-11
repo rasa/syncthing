@@ -54,35 +54,52 @@ const windowsDisallowedCharacters = (`<>:"|?*` +
 	"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f")
 
 // WindowsInvalidPath returns an error if name is invalid for the specified
-// encoder. Uses lexical analysis only.
-func WindowsInvalidPath(name string, encoderType encoder.EncoderType) error {
+// encoder, or Windows filesystem. Uses lexical analysis only.
+// When reservedFilenames is true, filenames that end in a period or space, and
+// reserved Windows filenames such as CON or NUL.txt will be saved on disk.
+// These files can be difficult for non-technical users to work with. We can
+// address this by encoding these filenames instead, if desired.
+func WindowsInvalidPath(name string, encoderType encoder.EncoderType, reservedFilenames bool) error {
 	switch encoderType {
 	case encoder.EncoderTypeRclone, encoder.EncoderTypeWSL:
-		// The Rclone/WSL encoders "saves" files containing invalid characters.
-		// It still allows filenames that end in a period or space, and reserved
-		// Windows filenames such as CON or NUL.txt.
-		return WindowsReservedFilename(name)
+		if !reservedFilenames {
+			return windowsReservedFilename(name)
+		}
 	case encoder.EncoderTypeUnset, encoder.EncoderTypeNone:
-		fallthrough
+		return WindowsInvalidFilename(name, reservedFilenames)
 	default:
-		return WindowsInvalidFilename(name)
+		panic("Unexpected encoder type: " + encoderType.String())
 	}
+	return nil
 }
 
 // WindowsInvalidFilename returns an error if name contains characters that are
 // reserved on Windows. Uses lexical analysis only.
-func WindowsInvalidFilename(name string) error {
+func WindowsInvalidFilename(name string, reservedFilenames bool) error {
+	err := windowsInvalidFilenameChars(name)
+	if err != nil {
+		return err
+	}
+	if !reservedFilenames {
+		return windowsReservedFilename(name)
+	}
+	return nil
+}
+
+// windowsInvalidFilenameChars returns an error if name contains characters that are
+// reserved on Windows. Uses lexical analysis only.
+func windowsInvalidFilenameChars(name string) error {
 	// The path must not contain any disallowed characters.
 	if idx := strings.IndexAny(name, windowsDisallowedCharacters); idx != -1 {
 		return fmt.Errorf("%w: %q", errInvalidFilenameWindowsReservedChar, name[idx:idx+1])
 	}
-	return WindowsReservedFilename(name)
+	return nil
 }
 
-// WindowsReservedFilename returns an error if name is reserved on Windows,
+// windowsReservedFilename returns an error if name is reserved on Windows,
 // such as CON, or NUL.txt, or if it ends in a period or space. Uses lexical
 // analysis only.
-func WindowsReservedFilename(name string) error {
+func windowsReservedFilename(name string) error {
 	// None of the path components should end in space or period, or be a
 	// reserved name.
 	for len(name) > 0 {
@@ -156,7 +173,7 @@ func windowsReservedNamePart(part string) string {
 	}
 
 	// Check length to skip allocating ToUpper.
-	if len(part) != 3 && len(part) != 4 {
+	if len(part) < 3 || len(part) > 7 {
 		return ""
 	}
 
@@ -167,8 +184,12 @@ func windowsReservedNamePart(part string) string {
 	case "CON", "PRN", "AUX", "NUL",
 		"COM0", "COM1", "COM2", "COM3", "COM4",
 		"COM5", "COM6", "COM7", "COM8", "COM9",
+		"COM¹", "COM²", "COM³",
 		"LPT0", "LPT1", "LPT2", "LPT3", "LPT4",
-		"LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		"LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+		"LPT¹", "LPT²", "LPT³",
+		// See https://learn.microsoft.com/en-us/windows/console/console-handles
+		"CONIN$", "CONOUT$":
 		return part
 	}
 	return ""

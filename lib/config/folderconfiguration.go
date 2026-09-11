@@ -89,6 +89,7 @@ type FolderConfiguration struct {
 	BlockIndexing           bool                        `json:"blockIndexing" xml:"blockIndexing" default:"true"`
 	XattrFilter             XattrFilter                 `json:"xattrFilter" xml:"xattrFilter"`
 	EncoderType             EncoderType                 `json:"encoderType" xml:"encoderType" default:"unset"`
+	ReservedFilenames       bool                        `json:"reservedFilenames" xml:"reservedFilenames"`
 	// Legacy deprecated
 	DeprecatedReadOnly       bool    `json:"-" xml:"ro,attr,omitempty"`        // Deprecated: Do not use.
 	DeprecatedMinDiskFreePct float64 `json:"-" xml:"minDiskFreePct,omitempty"` // Deprecated: Do not use.

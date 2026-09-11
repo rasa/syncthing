@@ -17,10 +17,6 @@ import (
 )
 
 func testWalkSkipSymlink(t *testing.T, fsType FilesystemType, uri string, opts []Option) {
-	if build.IsWindows {
-		t.Skip("Symlinks skipping is not tested on windows")
-	}
-
 	fs := NewFilesystem(fsType, uri, opts...)
 
 	if err := fs.MkdirAll("target/foo", 0o755); err != nil {
